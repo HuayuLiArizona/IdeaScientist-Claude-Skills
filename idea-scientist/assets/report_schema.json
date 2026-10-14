@@ -1,0 +1,86 @@
+{
+  "title": "Proposal title.",
+  "topic_relevance": {
+    "sub_topic": ["Specific sub-areas this proposal belongs to."],
+    "primary_focus": ["Aspects addressed within those sub-areas."]
+  },
+  "one_sentence_thesis": "The contribution in one sentence: under 30 words, no jargon, no metric numbers.",
+  "core_problem": {
+    "problem_statement": "1-2 sentences, specific about what fails and why.",
+    "why_it_matters": ["Motivation only: real-world impact and the gap prior work leaves. Do not describe the solution here."],
+    "concrete_example": "A specific input/output scenario showing what goes wrong with current approaches."
+  },
+  "key_novelty": {
+    "main_idea": "Short name for the contribution.",
+    "explanation": ["2-3 bullets, at most ~35 words each, intuition/analogy level, no formal notation. Name where the borrowed mechanism comes from."]
+  },
+  "problem_definition": {
+    "formal_setting": "Mathematical or formal description of the problem.",
+    "inputs": "What the system receives.",
+    "outputs": "What the system produces."
+  },
+  "key_terms": {
+    "<term>": "Plain-language definition."
+  },
+  "related_work": [
+    {
+      "sub_area": "Name of a line of prior work.",
+      "what_it_does": "Mechanism-level summary of that prior work, with inline [id] citations.",
+      "open_gap": "The gap this line of work leaves that the proposal addresses.",
+      "citations": ["arXiv:XXXX.XXXXX"]
+    }
+  ],
+  "method": {
+    "high_level_flow": ["Stage name: module A -> module B -> module C"],
+    "modules": [
+      {
+        "module": "Name.",
+        "role": "What it does.",
+        "model": "Architecture, if any.",
+        "inputs": ["..."],
+        "outputs": ["..."],
+        "notes": "Implementation details that matter."
+      }
+    ],
+    "novel_architectural_elements": ["Structural design choices only: how modules are arranged or connected in a way prior work does not."],
+    "pseudocode": "The core algorithm as a code-block string.",
+    "design_choices": ["A key design choice and why it is made."],
+    "theoretical_grounding": "Why the mechanism should work here: the transferred principle, the shared structure with the source setting, and any formal argument."
+  },
+  "model_details": {
+    "base_model": "Be specific (e.g. 'Llama-3.1-8B'), or 'none — <why the method needs no model>'.",
+    "training": {
+      "method": "e.g. supervised fine-tuning, RL, contrastive learning, or 'training-free'.",
+      "objective_functions": ["Purpose: <plain language>. Formally: <notation>."],
+      "adaptation": "e.g. 'LoRA (rank 16)', 'full fine-tuning', 'frozen backbone'.",
+      "key_hyperparameters": {
+        "<name>": "<proposed value and why>"
+      }
+    }
+  },
+  "comparison_to_sota": {
+    "related_methods": ["Name [id]: one-line description."],
+    "key_differences": ["vs. <method> [id]: the specific difference."]
+  },
+  "proposed_evaluation": {
+    "evaluation_setting": "How the method would be evaluated.",
+    "benchmarks": [
+      {
+        "name": "Benchmark or dataset [id].",
+        "task_type": "e.g. classification, generation, retrieval.",
+        "newly_constructed": false
+      }
+    ],
+    "baselines": ["Methods to compare against [id]."],
+    "main_metrics": ["Metrics to report."],
+    "ablations": ["Ablations that isolate each contribution."]
+  },
+  "falsifiable_predictions": [
+    {
+      "pillar": "Which design pillar this tests.",
+      "prediction": "One empirical claim the method implies (a prediction, not a result).",
+      "kill_condition": "The observation that would falsify it."
+    }
+  ],
+  "limitations": ["3-5 concise limitations, acknowledged or apparent from the method."]
+}
