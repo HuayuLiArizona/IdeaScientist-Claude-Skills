@@ -1,0 +1,43 @@
+Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+
+idea-scientist (IdeaScientist-Claude-Skills)
+Copyright (c) 2026 HuayuLiArizona
+
+Adapted from IdeaScientist
+Copyright (c) 2026 The IdeaScientist authors
+https://github.com/jiarui-liu/IdeaScientist, licensed under CC BY-NC 4.0.
+
+Changes made: the IdeaScientist ideation harness (role prompts, artifact
+schemas, orchestration loop, validity gates and evaluation rubrics) was
+rewritten and adapted into a Claude skill, with live web retrieval in place of
+the offline Idea Vault and without the reinforcement-learning training. See
+idea-scientist/NOTICE.md for details.
+
+This work is licensed under the Creative Commons Attribution-NonCommercial 4.0
+International License.
+
+You are free to:
+
+  Share  — copy and redistribute the material in any medium or format
+  Adapt  — remix, transform, and build upon the material
+
+Under the following terms:
+
+  Attribution   — You must give appropriate credit, provide a link to the
+                  license, and indicate if changes were made.
+  NonCommercial — You may not use the material for commercial purposes.
+
+No warranties are given. The license may not give you all of the permissions
+necessary for your intended use.
+
+The full legal code is the authoritative text of this license and governs in
+case of any discrepancy with the summary above:
+
+  https://creativecommons.org/licenses/by-nc/4.0/legalcode
+
+Human-readable summary: https://creativecommons.org/licenses/by-nc/4.0/
+
+If you use this work, please cite the original paper:
+
+  Jiarui Liu et al. IdeaScientist: Orchestrating Agents for Grounded
+  Scientific Ideation. arXiv:2610.04074, 2026.
