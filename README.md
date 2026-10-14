@@ -60,28 +60,38 @@ Two rules make the output trustworthy:
 
 The skill needs **web search and web fetch** (to find and read papers) and **code execution** (for its helper scripts). The scripts use only the Python 3.9+ standard library, so there is nothing to `pip install`.
 
+The skill itself is the [`idea-scientist/`](idea-scientist) folder of this repository. Install that folder, keeping its name: it must match the `name` in `SKILL.md`.
+
 ### Claude Code
 
 ```bash
-# personal: available in every project
-git clone https://github.com/<your-github-username>/idea-scientist ~/.claude/skills/idea-scientist
+git clone https://github.com/HuayuLiArizona/IdeaScientist-Claude-Skills.git
+mkdir -p ~/.claude/skills
 
-# or per project: shared with everyone who clones the repo
-git clone https://github.com/<your-github-username>/idea-scientist .claude/skills/idea-scientist
+# personal: available in every project
+cp -r IdeaScientist-Claude-Skills/idea-scientist ~/.claude/skills/
+
+# or per project: shared with everyone who clones that project
+mkdir -p .claude/skills && cp -r IdeaScientist-Claude-Skills/idea-scientist .claude/skills/
 ```
 
-The folder must be named `idea-scientist`, matching the `name` in `SKILL.md`.
+To pick up updates with `git pull`, link the folder instead of copying it:
+
+```bash
+ln -s "$PWD/IdeaScientist-Claude-Skills/idea-scientist" ~/.claude/skills/idea-scientist
+```
 
 ### Claude.ai / Claude desktop app
 
 1. Make sure code execution is on (**Settings → Capabilities** on Free, Pro and Max plans; on Team and Enterprise it is managed by your organization).
-2. Build a ZIP whose top-level folder is named `idea-scientist`:
+2. Build a ZIP of the `idea-scientist` folder:
    ```bash
-   git clone https://github.com/<your-github-username>/idea-scientist
-   zip -r idea-scientist.zip idea-scientist -x "idea-scientist/.git/*"
+   git clone https://github.com/HuayuLiArizona/IdeaScientist-Claude-Skills.git
+   cd IdeaScientist-Claude-Skills
+   zip -r idea-scientist.zip idea-scientist
    ```
-   GitHub's *Download ZIP* button names the folder `idea-scientist-main`, which makes the upload fail. If you use it, rename the folder to `idea-scientist` and re-zip.
-3. Go to **Customize → Skills → + → Create skill → Upload a skill** and choose the ZIP.
+   GitHub's *Download ZIP* button wraps the whole repository in `IdeaScientist-Claude-Skills-main/`, so that file can't be uploaded as is. Unzip it and zip only the `idea-scientist` folder inside.
+3. Go to **Customize → Skills → + → Create skill → Upload a skill** and choose `idea-scientist.zip`.
 
 See [Use skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude) for plan-specific details.
 
@@ -125,7 +135,7 @@ If you give only a topic, Claude proposes two or three concrete (problem, challe
 ### Retrieval backends
 
 - **`web`** (default): WebSearch to find papers, WebFetch to read full text (`arxiv.org/html/<id>`, `/pdf/<id>`, bioRxiv, ACL Anthology, OpenReview, publisher pages). Works everywhere.
-- **`api`**: arXiv, Semantic Scholar or OpenAlex APIs via `scripts/lit_search.py`, when your shell can reach them. Run `python scripts/lit_search.py check` to find out. Set `S2_API_KEY` for higher Semantic Scholar rate limits.
+- **`api`**: arXiv, Semantic Scholar or OpenAlex APIs via `scripts/lit_search.py`, when your shell can reach them. Run `python idea-scientist/scripts/lit_search.py check` to find out. Set `S2_API_KEY` for higher Semantic Scholar rate limits.
 - **`vault`**: a local copy of the [Svalbard Idea Vault](https://huggingface.co/datasets/Jerry999/SvalbardIdeaVault) from the original paper. Set `IDEASCIENTIST_KEYWORD_INDEX` (FTS5 index) and `IDEA_VAULT_DB` (paper database).
 
 ## What you get
@@ -151,15 +161,16 @@ The proposal is **results-masked**: it says what would be built, how it would be
 
 ## Helper scripts
 
-The skill calls these itself; you can also run them by hand.
+The skill calls these itself; you can also run them by hand. From the repository root:
 
 ```bash
-python scripts/init_run.py ideation-foo --depth quick --cutoff 2025-06-01 --language zh
-python scripts/lit_search.py check
-python scripts/lit_search.py search --backend arxiv "cascade ranking latency" --k 20 --before 2025-06-01
-python scripts/lit_search.py path "doi:10.1101/2023.06.01.543210"   # digest path for an ID
-python scripts/validate.py ideation-foo            # validity gates; exit code 1 on FAIL
-python scripts/render_report.py ideation-foo       # report.json → report.md
+S=idea-scientist/scripts
+python $S/init_run.py ideation-foo --depth quick --cutoff 2025-06-01 --language zh
+python $S/lit_search.py check
+python $S/lit_search.py search --backend arxiv "cascade ranking latency" --k 20 --before 2025-06-01
+python $S/lit_search.py path "doi:10.1101/2023.06.01.543210"   # digest path for an ID
+python $S/validate.py ideation-foo            # validity gates; exit code 1 on FAIL
+python $S/render_report.py ideation-foo       # report.json → report.md
 ```
 
 `validate.py` mirrors the reward gates of the original system:
@@ -173,17 +184,19 @@ python scripts/render_report.py ideation-foo       # report.json → report.md
 ## Repository layout
 
 ```text
-SKILL.md                    orchestrator: intake, loop, budgets, delivery
-NOTICE.md                   attribution and license
-references/
-  retrieval.md              paper IDs, search regimes, search budget, digests, cutoff rules
-  schemas.md                format of every run file
-  evaluation.md             self-evaluation rubrics
-  roles/                    gap_finder · innovator · reviewer · report_writer · paper_reader
-scripts/
-  init_run.py · lit_search.py · validate.py · render_report.py · _ids.py
-assets/
-  report_schema.json        proposal skeleton
+README.md · README.zh-CN.md
+idea-scientist/                 ← the skill (install this folder)
+  SKILL.md                      orchestrator: intake, loop, budgets, delivery
+  NOTICE.md                     attribution and license
+  references/
+    retrieval.md                paper IDs, search regimes, search budget, digests, cutoff rules
+    schemas.md                  format of every run file
+    evaluation.md               self-evaluation rubrics
+    roles/                      gap_finder · innovator · reviewer · report_writer · paper_reader
+  scripts/
+    init_run.py · lit_search.py · validate.py · render_report.py · _ids.py
+  assets/
+    report_schema.json          proposal skeleton
 ```
 
 ## Evaluation
@@ -250,4 +263,4 @@ Original code: [jiarui-liu/IdeaScientist](https://github.com/jiarui-liu/IdeaScie
 
 ## License
 
-[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). The role instructions, artifact schemas, orchestration loop, validity gates and evaluation rubrics are adapted from the original IdeaScientist repository, which is released under CC BY-NC 4.0, so this skill is shared under the same terms: attribution required, non-commercial use only. See [`NOTICE.md`](NOTICE.md).
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). The role instructions, artifact schemas, orchestration loop, validity gates and evaluation rubrics are adapted from the original IdeaScientist repository, which is released under CC BY-NC 4.0, so this skill is shared under the same terms: attribution required, non-commercial use only. See [`idea-scientist/NOTICE.md`](idea-scientist/NOTICE.md).

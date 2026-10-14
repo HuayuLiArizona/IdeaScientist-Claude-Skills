@@ -57,28 +57,38 @@ flowchart LR
 
 这个 skill 需要**网页搜索和网页抓取**（找论文、读论文）以及**代码执行**（运行辅助脚本）。脚本只用 Python 3.9+ 标准库，不需要 `pip install` 任何东西。
 
+skill 本体是本仓库里的 [`idea-scientist/`](idea-scientist) 文件夹。安装时装这个文件夹，并保持文件夹名不变，它必须与 `SKILL.md` 里的 `name` 一致。
+
 ### Claude Code
 
 ```bash
-# 个人：所有项目都能用
-git clone https://github.com/<your-github-username>/idea-scientist ~/.claude/skills/idea-scientist
+git clone https://github.com/HuayuLiArizona/IdeaScientist-Claude-Skills.git
+mkdir -p ~/.claude/skills
 
-# 项目级：克隆这个仓库的人都能用
-git clone https://github.com/<your-github-username>/idea-scientist .claude/skills/idea-scientist
+# 个人：所有项目都能用
+cp -r IdeaScientist-Claude-Skills/idea-scientist ~/.claude/skills/
+
+# 项目级：克隆该项目的人都能用
+mkdir -p .claude/skills && cp -r IdeaScientist-Claude-Skills/idea-scientist .claude/skills/
 ```
 
-文件夹必须命名为 `idea-scientist`，与 `SKILL.md` 里的 `name` 一致。
+想用 `git pull` 直接获取更新的话，可以用软链接代替复制：
+
+```bash
+ln -s "$PWD/IdeaScientist-Claude-Skills/idea-scientist" ~/.claude/skills/idea-scientist
+```
 
 ### Claude.ai / Claude 桌面版
 
 1. 确认已开启代码执行。Free、Pro、Max 套餐在 **Settings → Capabilities** 里打开；Team 和 Enterprise 由组织管理员控制。
-2. 打一个 ZIP，顶层文件夹名必须是 `idea-scientist`：
+2. 把 `idea-scientist` 文件夹打成 ZIP：
    ```bash
-   git clone https://github.com/HuayuLiArizona/idea-scientist
-   zip -r idea-scientist.zip idea-scientist -x "idea-scientist/.git/*"
+   git clone https://github.com/HuayuLiArizona/IdeaScientist-Claude-Skills.git
+   cd IdeaScientist-Claude-Skills
+   zip -r idea-scientist.zip idea-scientist
    ```
-   GitHub 网页上的 *Download ZIP* 解压出来的文件夹叫 `idea-scientist-main`，直接上传会失败。如果用这个按钮下载，要先把文件夹改名为 `idea-scientist` 再重新压缩。
-3. 进入 **Customize → Skills → + → Create skill → Upload a skill**，选择这个 ZIP。
+   GitHub 网页上 *Download ZIP* 下载的文件，外面多包了一层 `IdeaScientist-Claude-Skills-main/`，不能直接上传。需要先解压，再只把里面的 `idea-scientist` 文件夹压缩成 ZIP。
+3. 进入 **Customize → Skills → + → Create skill → Upload a skill**，选择 `idea-scientist.zip`。
 
 各套餐的具体要求见 [Use skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude)。
 
@@ -122,7 +132,7 @@ git clone https://github.com/<your-github-username>/idea-scientist .claude/skill
 ### 检索方式
 
 - **`web`**（默认）：用 WebSearch 找论文，用 WebFetch 读全文，来源包括 `arxiv.org/html/<id>`、`/pdf/<id>`、bioRxiv、ACL Anthology、OpenReview 和出版社页面。在哪里都能用。
-- **`api`**：shell 能联网时，通过 `scripts/lit_search.py` 调用 arXiv、Semantic Scholar 或 OpenAlex 的 API。先运行 `python scripts/lit_search.py check` 看能不能连上。设置 `S2_API_KEY` 可以提高 Semantic Scholar 的限额。
+- **`api`**：shell 能联网时，通过 `scripts/lit_search.py` 调用 arXiv、Semantic Scholar 或 OpenAlex 的 API。先运行 `python idea-scientist/scripts/lit_search.py check` 看能不能连上。设置 `S2_API_KEY` 可以提高 Semantic Scholar 的限额。
 - **`vault`**：使用原论文的 [Svalbard Idea Vault](https://huggingface.co/datasets/Jerry999/SvalbardIdeaVault) 本地副本。需要设置 `IDEASCIENTIST_KEYWORD_INDEX`（FTS5 索引）和 `IDEA_VAULT_DB`（论文数据库）。
 
 ## 产出
@@ -148,15 +158,16 @@ ideation-<slug>/
 
 ## 辅助脚本
 
-skill 会自动调用这些脚本，你也可以手动运行：
+skill 会自动调用这些脚本，你也可以在仓库根目录手动运行：
 
 ```bash
-python scripts/init_run.py ideation-foo --depth quick --cutoff 2025-06-01 --language zh
-python scripts/lit_search.py check
-python scripts/lit_search.py search --backend arxiv "cascade ranking latency" --k 20 --before 2025-06-01
-python scripts/lit_search.py path "doi:10.1101/2023.06.01.543210"   # 某个 ID 对应的摘要路径
-python scripts/validate.py ideation-foo            # validity gate，有 FAIL 时退出码为 1
-python scripts/render_report.py ideation-foo       # report.json → report.md
+S=idea-scientist/scripts
+python $S/init_run.py ideation-foo --depth quick --cutoff 2025-06-01 --language zh
+python $S/lit_search.py check
+python $S/lit_search.py search --backend arxiv "cascade ranking latency" --k 20 --before 2025-06-01
+python $S/lit_search.py path "doi:10.1101/2023.06.01.543210"   # 某个 ID 对应的摘要路径
+python $S/validate.py ideation-foo            # validity gate，有 FAIL 时退出码为 1
+python $S/render_report.py ideation-foo       # report.json → report.md
 ```
 
 `validate.py` 复刻了原系统奖励函数里的 validity gate：
@@ -170,17 +181,19 @@ python scripts/render_report.py ideation-foo       # report.json → report.md
 ## 仓库结构
 
 ```text
-SKILL.md                    orchestrator：接收问题、主循环、预算、交付
-NOTICE.md                   署名与许可
-references/
-  retrieval.md              论文 ID、两种检索方式、检索预算、摘要格式、截止规则
-  schemas.md                各运行文件的格式
-  evaluation.md             自评标准
-  roles/                    gap_finder · innovator · reviewer · report_writer · paper_reader
-scripts/
-  init_run.py · lit_search.py · validate.py · render_report.py · _ids.py
-assets/
-  report_schema.json        提案模板
+README.md · README.zh-CN.md
+idea-scientist/                 ← skill 本体（安装这个文件夹）
+  SKILL.md                      orchestrator：接收问题、主循环、预算、交付
+  NOTICE.md                     署名与许可
+  references/
+    retrieval.md                论文 ID、两种检索方式、检索预算、摘要格式、截止规则
+    schemas.md                  各运行文件的格式
+    evaluation.md               自评标准
+    roles/                      gap_finder · innovator · reviewer · report_writer · paper_reader
+  scripts/
+    init_run.py · lit_search.py · validate.py · render_report.py · _ids.py
+  assets/
+    report_schema.json          提案模板
 ```
 
 ## 测试结果
@@ -247,4 +260,4 @@ skill 唯一的失败，是回溯测试里读到了截止日之后的论文版�
 
 ## 许可
 
-[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans)。角色说明、产物格式、编排流程、validity gate 和评估标准改编自原 IdeaScientist 仓库，原仓库采用 CC BY-NC 4.0，因此本 skill 沿用相同条款：须署名，仅限非商业用途。详见 [`NOTICE.md`](NOTICE.md)。
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans)。角色说明、产物格式、编排流程、validity gate 和评估标准改编自原 IdeaScientist 仓库，原仓库采用 CC BY-NC 4.0，因此本 skill 沿用相同条款：须署名，仅限非商业用途。详见 [`idea-scientist/NOTICE.md`](idea-scientist/NOTICE.md)。
