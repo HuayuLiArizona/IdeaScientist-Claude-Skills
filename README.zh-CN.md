@@ -74,7 +74,7 @@ git clone https://github.com/<your-github-username>/idea-scientist .claude/skill
 1. 确认已开启代码执行。Free、Pro、Max 套餐在 **Settings → Capabilities** 里打开；Team 和 Enterprise 由组织管理员控制。
 2. 打一个 ZIP，顶层文件夹名必须是 `idea-scientist`：
    ```bash
-   git clone https://github.com/<your-github-username>/idea-scientist
+   git clone https://github.com/HuayuLiArizona/idea-scientist
    zip -r idea-scientist.zip idea-scientist -x "idea-scientist/.git/*"
    ```
    GitHub 网页上的 *Download ZIP* 解压出来的文件夹叫 `idea-scientist-main`，直接上传会失败。如果用这个按钮下载，要先把文件夹改名为 `idea-scientist` 再重新压缩。
