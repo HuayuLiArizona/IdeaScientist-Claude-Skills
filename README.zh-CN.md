@@ -27,7 +27,7 @@ Claude：[梳理相关工作 → 找出方法层面的缺口 → 从别的领域
 |---|---|---|
 | **Gap finder** | 读同一问题下最接近的已有工作，指出它们在方法上不足的一个具体原因 | `gaps.md` |
 | **Innovator** | 到**其他领域**找解决过类似难题的机制，读原文，论证为什么能迁移过来 | `candidates.md` |
-| **Reviewer** | 试图推翻候选 idea 的新颖性和可迁移性，给出 survive / revise / reject | `scores.md` |
+| **Reviewer** | 完整阅读最接近的工作，写出 novelty 论证（或撞车报告），并检查可行性，给出 survive / revise / reject | `scores.md` |
 | **Report writer** | 把通过评审的 idea 写成完整、可证伪的提案 | `report.json` |
 | **Paper reader** | 把论文全文压缩成针对具体问题的简短摘要 | `papers/<id>.md` |
 
@@ -52,6 +52,12 @@ flowchart LR
 
 - **文件就是接口。** 角色之间只通过固定格式的文件交流，每个阶段都能检查，也能把单个阶段退回重做。
 - **先读后引。** 只有在 `papers/` 里有摘要的论文才能被引用。`validate.py` 会机械地检查这一点。编造"相近工作"是让 idea 看起来很好、实际却站不住的最省事的办法，所以必须堵住。
+
+### 什么样的 idea 算可行
+
+这个 skill 不追求"绝对原创"或"从未有人做过"，也不会因为已有相似工作就轻易否定一个方向。只要 idea 相对最接近的工作有**清晰且有意义的增量**，就是可行的。比如把已有思路推进一步、加以完善或深化，解决已有方法的具体不足，或者从新的视角重新组织问题，讲出一个更完整、更有说服力的故事。判断的重点是"到底新增了什么、为什么重要"，而不是"有没有先例"。
+
+反过来，它也不会为了保留 idea 而强行制造 novelty。只有在完整读过最接近的论文之后，发现在核心问题、关键方法和主要贡献这三方面**同时**高度重合、已无法形成实质区分时，才判定为"撞车"。这时评审会明确指出与哪些工作撞车、具体重合在哪里。
 
 ## 安装
 
@@ -113,6 +119,24 @@ ln -s "$PWD/IdeaScientist-Claude-Skills/idea-scientist" ~/.claude/skills/idea-sc
 
 只给一个大方向时，Claude 会先提出两三种具体的（问题，挑战）表述让你挑；给一篇论文时，它会提取出问题和你关心的局限。
 
+### 检查你自己的 idea
+
+如果你带着自己的 idea 来，skill 会切换到 **user-idea 模式**。它会把你的 idea 当作要发展的对象，而不是拿来替换的种子：
+
+```text
+我的 idea：把逆问题 PINN 里被投毒的传感器，看成数据同化里有偏差的观测，
+在线估计它们的误差膨胀系数。这个方向有人做过吗？帮我查一下 novelty。
+```
+
+1. 先把你的 idea 如实整理成候选 C1，不会换成别的机制。
+2. 然后做 **novelty 调研**：找出最接近的论文，完整阅读它们的问题设定、核心方法、技术细节和贡献边界，逐篇在问题、方法、贡献三方面与你的 idea 对比。
+3. 最后给出三种结论之一：
+   - **可行**：附一段 novelty 论证，说明你的 idea 具体新增了什么、推进了什么，以及为什么这种差异有意义。
+   - **需要打磨**：指出该往哪个方向强化区分度。skill 可以在保留你核心思路的前提下重做，只调整定位或薄弱的部分。
+   - **撞车**：附撞车报告，列出重合的论文，说明问题、方法、贡献在哪些地方重合，以及为什么剩下的差异撑不起一个可信的 novelty claim。运行到此结束，不会悄悄换成另一个 idea。
+
+默认只交付 novelty 评估。如果要求写提案，它会继续写出完整的 `report.md`。
+
 ### 可选设置（用自然语言说出来即可）
 
 | 设置 | 取值 | 默认 | 作用 |
@@ -128,6 +152,18 @@ ln -s "$PWD/IdeaScientist-Claude-Skills/idea-scientist" ~/.claude/skills/idea-sc
 | `revise` 后最多重做几次 | 1 | 2 | 3 |
 | 报告长度 | 约 1–2k 词 | 约 2.5–4k 词 | 按需 |
 | 自评 | 无 | 质量 + 跨领域迁移 | 全部，含盲测的"非显然性"检验 |
+| 最多读论文 | 20 | 45 | 80 |
+| 最多玩具验证 | 1 | 3 | 6 |
+| 收尾 / 强制停止 | 30 / 45 分钟 | 75 / 120 分钟 | 150 / 240 分钟 |
+
+每次运行都有硬上限。每次调用角色之后，`scripts/status.py` 会给出三种结论之一：`CONTINUE`（继续）、`WRAP UP`（停止探索，选出最好的候选写报告）、`STOP`（不再读论文，用现有材料交付）。每次角色调用对读论文数和检索次数也各有上限。如果撞到上限时还没有候选通过评审，就会以"强制提交"的方式交付，并在交付时明确说明。
+
+**玩具验证。** innovator 和 reviewer 每次调用可以跑一个快速的数值玩具实验，用来检验某个关键前提，比如迁移过来的机制所依赖的假设在小规模下是否成立。每个验证：
+- 运行之前必须先在 `checks.md` 里写明要检验的问题和证伪标准；
+- 只能是小型 CPU 脚本，5 分钟超时；
+- 只用于辅助决策，不会作为结果写进提案。渲染出的报告会把所有验证列在附录里，并注明是玩具验证。
+
+详见 `references/sanity_checks.md`。
 
 ### 检索方式
 
@@ -146,6 +182,7 @@ ideation-<slug>/
 ├── gaps.md           每个 axis 的综述：已有做法，以及最多 2 个方法层面的 gap
 ├── candidates.md     C1、C2……每个 idea 及其借鉴的来源机制
 ├── scores.md         评审结论、检索记录、最强反对意见
+├── checks.md         事先登记的玩具验证（脚本在 checks/ 下）
 ├── papers/           每篇读过的论文一份按问题作答的摘要
 ├── report.json       提案，固定的 results-masked 格式
 ├── report.md         渲染后的提案，带编号和链接的参考文献
@@ -163,6 +200,7 @@ skill 会自动调用这些脚本，你也可以在仓库根目录手动运行�
 ```bash
 S=idea-scientist/scripts
 python $S/init_run.py ideation-foo --depth quick --cutoff 2025-06-01 --language zh
+python $S/status.py ideation-foo              # 预算检查：CONTINUE / WRAP UP / STOP
 python $S/lit_search.py check
 python $S/lit_search.py search --backend arxiv "cascade ranking latency" --k 20 --before 2025-06-01
 python $S/lit_search.py path "doi:10.1101/2023.06.01.543210"   # 某个 ID 对应的摘要路径
@@ -188,10 +226,11 @@ idea-scientist/                 ← skill 本体（安装这个文件夹）
   references/
     retrieval.md                论文 ID、两种检索方式、检索预算、摘要格式、截止规则
     schemas.md                  各运行文件的格式
+    sanity_checks.md            快速数值玩具验证的规则
     evaluation.md               自评标准
     roles/                      gap_finder · innovator · reviewer · report_writer · paper_reader
   scripts/
-    init_run.py · lit_search.py · validate.py · render_report.py · _ids.py
+    init_run.py · status.py · lit_search.py · validate.py · render_report.py · _ids.py
   assets/
     report_schema.json          提案模板
 ```
@@ -234,7 +273,7 @@ skill 唯一的失败，是回溯测试里读到了截止日之后的论文版�
 
 ## 局限
 
-- **成本：** 一次 standard 运行大约读 15–40 篇论文，耗时 30–40 分钟。
+- **成本：** 一次 standard 运行大约读 15–40 篇论文，通常耗时 30–75 分钟，最多 2 小时强制停止（`deep` 为 4 小时）。偏理论的问题更容易撞到上限，这时交付的是强制提交的候选，而不是通过评审的候选。
 - **检索限额：** 网页搜索有频率限制，并行运行时会互相挤占额度。额度用完后，skill 会从已读论文的参考文献里继续追溯，并在报告中写明哪些检查没有做完。
 - **inline 模式：** 没有子 agent 工具时，所有角色由同一个 Claude 扮演，各阶段之间的独立性变弱，盲测的非显然性检验会跳过。
 - **覆盖范围：** 覆盖面取决于网页搜索和抓取能拿到什么。付费墙后的论文可能只能读到摘要，skill 会把这类摘要标为 abstract-only。

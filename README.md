@@ -30,7 +30,7 @@ So the work is split into separate roles, each producing its own artifact:
 |---|---|---|
 | **Gap finder** | Reads the closest same-problem prior work and states *one precise methodological reason* it falls short | `gaps.md` |
 | **Innovator** | Searches *other* fields for a mechanism that beat an analogous challenge, reads it, argues why it transfers | `candidates.md` |
-| **Reviewer** | Tries to falsify novelty and transfer plausibility: survive / revise / reject | `scores.md` |
+| **Reviewer** | Reads the closest work in full, writes a novelty argument (or a collision report), checks plausibility: survive / revise / reject | `scores.md` |
 | **Report writer** | Develops the survivor into a complete, falsifiable proposal | `report.json` |
 | **Paper reader** | Turns a paper's full text into a short, goal-focused digest | `papers/<id>.md` |
 
@@ -55,6 +55,12 @@ Two rules make the output trustworthy:
 
 - **Artifacts are the interface.** Roles communicate only through files with fixed schemas, so every stage can be inspected and any one stage sent back for rework.
 - **Read before cite.** A paper may be cited only if a digest for it exists. `validate.py` checks this mechanically, because fabricated "near-miss" papers are the easiest way for ideation to look good while being wrong.
+
+### What counts as a viable idea
+
+The skill does not chase absolute originality, and it won't drop a direction just because related work exists. An idea is viable when it adds something **clear and meaningful** over the closest work: it pushes an existing idea further, fixes a concrete shortcoming, or reframes the problem into a more complete, more convincing story. The question is *what exactly does it add, and why does that matter* — not *has anything like it ever been done*.
+
+It also refuses to manufacture novelty. An idea counts as a **collision** only when it overlaps with existing work on the core problem, the key method *and* the main contribution, judged after reading those papers in full. Then the reviewer names the papers and the exact overlap instead of arguing around it.
 
 ## Installation
 
@@ -116,6 +122,25 @@ Problem: RAG answers badly when retrieved passages contradict each other …
 
 If you give only a topic, Claude proposes two or three concrete (problem, challenge) framings for you to pick from. If you give a paper, it extracts the problem and the limitation you care about.
 
+### Checking your own idea
+
+Bring an idea of your own and the skill switches to **user-idea mode**. It treats your idea as the thing to develop, not a seed to replace:
+
+```text
+My idea: treat poisoned sensors in inverse PINNs like biased observations in data
+assimilation, and estimate their error inflation online. Has anyone done this?
+Check the novelty.
+```
+
+1. Your idea is written up faithfully as candidate C1, without swapping in a different mechanism.
+2. A **novelty survey** finds the closest papers and reads them in full: problem setting, core method, technical details, contribution boundary. Each one is compared with your idea on problem, method and contribution.
+3. You get one of three verdicts:
+   - **Viable**, with a novelty argument: a paragraph on what your idea adds or advances and why it matters.
+   - **Needs sharpening**, with the direction to sharpen. The skill can rebuild the idea, keeping your core and changing only the positioning or the weak component.
+   - **Collision**, with a report naming the overlapping papers, where problem, method and contribution coincide, and why the remaining differences can't carry a novelty claim. The run stops there; it doesn't quietly substitute another idea.
+
+By default you get the novelty assessment. Ask for a proposal and it continues to a full `report.md`.
+
 ### Options (just say them)
 
 | Setting | Values | Default | Effect |
@@ -131,6 +156,18 @@ If you give only a topic, Claude proposes two or three concrete (problem, challe
 | Rebuilds after a `revise` verdict | 1 | 2 | 3 |
 | Report length | ~1–2k words | ~2.5–4k words | as needed |
 | Self-evaluation | none | quality + cross-domain transfer | full, incl. blind non-obviousness test |
+| Papers read, at most | 20 | 45 | 80 |
+| Sanity checks, at most | 1 | 3 | 6 |
+| Wrap-up / hard stop | 30 / 45 min | 75 / 120 min | 150 / 240 min |
+
+Every run has hard limits. After each role call, `scripts/status.py` reports `CONTINUE`, `WRAP UP` (stop exploring, commit the best candidate, write the report) or `STOP` (no more reading; deliver with what exists). Each role call also has its own caps on papers read and web searches. A run that hits a limit before any candidate passes review delivers a *forced commit*, and says so.
+
+**Sanity checks.** The innovator and the reviewer may each run one quick numerical toy per call to test a load-bearing claim — for example, whether a transferred mechanism's key assumption holds at toy scale. Each check:
+- is pre-registered in `checks.md` with its question and kill criterion *before* it runs;
+- is limited to a small CPU script with a 5-minute timeout;
+- informs decisions only. It never appears as a result in the proposal, and the rendered report lists all checks in an appendix labelled as toy checks.
+
+See `references/sanity_checks.md`.
 
 ### Retrieval backends
 
@@ -149,6 +186,7 @@ ideation-<slug>/
 ├── gaps.md           per-axis survey: what has been done, ≤2 methodological gaps
 ├── candidates.md     C1, C2, … — intuitions with their source mechanisms
 ├── scores.md         reviewer verdicts, search trails, strongest objections
+├── checks.md         pre-registered sanity checks (scripts in checks/)
 ├── papers/           one goal-by-goal digest per paper read
 ├── report.json       the proposal, in a fixed results-masked schema
 ├── report.md         rendered proposal with numbered, linked references
@@ -166,6 +204,7 @@ The skill calls these itself; you can also run them by hand. From the repository
 ```bash
 S=idea-scientist/scripts
 python $S/init_run.py ideation-foo --depth quick --cutoff 2025-06-01 --language zh
+python $S/status.py ideation-foo              # budget check: CONTINUE / WRAP UP / STOP
 python $S/lit_search.py check
 python $S/lit_search.py search --backend arxiv "cascade ranking latency" --k 20 --before 2025-06-01
 python $S/lit_search.py path "doi:10.1101/2023.06.01.543210"   # digest path for an ID
@@ -191,10 +230,11 @@ idea-scientist/                 ← the skill (install this folder)
   references/
     retrieval.md                paper IDs, search regimes, search budget, digests, cutoff rules
     schemas.md                  format of every run file
+    sanity_checks.md            rules for quick numerical toy checks
     evaluation.md               self-evaluation rubrics
     roles/                      gap_finder · innovator · reviewer · report_writer · paper_reader
   scripts/
-    init_run.py · lit_search.py · validate.py · render_report.py · _ids.py
+    init_run.py · status.py · lit_search.py · validate.py · render_report.py · _ids.py
   assets/
     report_schema.json          proposal skeleton
 ```
@@ -237,7 +277,7 @@ Caveats:
 
 ## Limitations
 
-- **Cost.** A standard run reads roughly 15–40 papers and takes about 30–40 minutes.
+- **Cost.** A standard run reads roughly 15–40 papers and typically takes 30–75 minutes, with a hard stop at 2 hours (4 hours for `deep`). Theory-heavy problems tend to run into the limits; when they do, the result is a forced commit rather than a reviewed survivor.
 - **Search rate limits.** Web search is rate-limited, and parallel runs drain the budget for each other. When search runs out, the skill keeps going by snowballing from papers it has already read, and says in the report which checks were incomplete.
 - **Inline mode.** Without a subagent tool, a single Claude plays every role. The stages are then less independent, and the blind non-obviousness test is skipped.
 - **Coverage.** Coverage is only as good as what web search and fetch can reach. Paywalled papers may only be available as abstracts, and the skill marks those digests as abstract-only.
