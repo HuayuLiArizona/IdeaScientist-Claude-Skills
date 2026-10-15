@@ -1,6 +1,6 @@
 ---
 name: idea-scientist
-description: Turn an open research problem into ONE grounded, novel research proposal using the IdeaScientist method — a gap finder reads close prior work to pin down a methodological gap, an innovator borrows a mechanism from a different field that solved an analogous challenge, an adversarial reviewer tries to kill it, and a report writer develops the survivor into a full proposal where every citation was actually read. Use this whenever someone wants a research idea, a novel method for a technical challenge, a research proposal or 开题 direction, help finding a research gap, cross-domain inspiration, "what could I try for X", or AI-scientist / IdeaScientist-style ideation — even if they never say "proposal". Also for 科研idea、研究想法、创新点、找gap、研究提案. Not for plain literature surveys, summarizing a given paper, running experiments, or writing up results already obtained.
+description: Turn an open research problem into ONE grounded research proposal with the IdeaScientist method — a gap finder pins down a methodological gap in close prior work, an innovator borrows a mechanism from a field that solved an analogous challenge, a reviewer reads the closest work in full and argues novelty, and a report writer develops the survivor into a proposal where every citation was actually read. Use whenever someone wants a research idea, a novel method for a technical challenge, a research proposal or 开题 direction, a research gap, cross-domain inspiration, or "what could I try for X" — even if they never say "proposal". Also use when someone brings their OWN idea and asks whether it is novel, whether it's been done, or how to position and develop it (查新、撞车、有没有人做过、novelty check). Also for 科研idea、研究想法、创新点、找gap、研究提案. Not for plain literature surveys, summarizing a given paper, running experiments, or writing up results already obtained.
 ---
 
 # IdeaScientist
@@ -19,6 +19,18 @@ So the method forces three separate moves, each with its own artifact:
 
 A **reviewer** sits between innovator and writer and tries to refute novelty and transfer plausibility. A **paper reader** turns full text into short goal-focused digests, so no role reasons from titles or abstracts. You, the main agent, are the **orchestrator**: you keep `plan.md`, decide which role runs next, and judge the files they produce.
 
+### What counts as a viable idea
+
+Don't chase absolute originality, and don't drop a direction just because related work exists. Prior attempts on a nearby problem don't make an idea worthless. An idea is viable when it has a **clear, meaningful increment** over the closest work and room to explore further. For example, it may:
+
+- push an existing idea further, deepen it, or complete it;
+- fix a concrete shortcoming of existing methods;
+- reorganize the problem from a new angle and tell a more complete, more convincing story.
+
+The question every role asks is *what exactly is added, and why does it matter*, not *has anything like this ever been done*. Cross-domain transfer is still the preferred way to find ideas, because it tends to produce larger increments, but it's a means, not a requirement.
+
+The bar also cuts the other way: never manufacture novelty. An idea is a **collision** only when, after reading the closest papers in full, it overlaps with existing work on all three of the core problem, the key method and the main contribution, so that no substantive distinction remains. Then say so plainly: name the papers and the exact overlap.
+
 Two disciplines make the output trustworthy:
 
 - **Artifacts are the interface.** Roles communicate only through files with fixed schemas (`references/schemas.md`). That keeps every stage inspectable and lets you send a single stage back for rework.
@@ -31,6 +43,7 @@ The method needs two inputs: a **problem definition** (setting, inputs, outputs,
 - **Concrete problem given** → formalize it directly.
 - **A paper given** ("improve on this") → read it (WebFetch with goals) and extract its problem and the limitation the user cares about.
 - **Only a topic** ("something about LLM agents memory") → propose 2–3 concrete (problem, challenge) framings in one short message and let the user pick. If the user isn't around to answer, pick the framing with the clearest failure mode and say which one you chose.
+- **The user's own idea** ("I want to do X with Y — has anyone done this?", "check the novelty of my idea") → **user-idea mode** (see *Mode B* below). Extract the problem and challenge the idea targets into `problem.md`, copy the idea verbatim under `## User idea`, and set `Idea source: user`. Also note what the user wants back: a novelty check only, or a developed proposal. If they don't say, deliver the novelty assessment and offer to develop it into a proposal.
 
 Keep the challenge solution-free: describe *what fails*, never *how to fix it*. A challenge that hints at the fix ("lacks a retrieval step") pre-decides the idea and defeats the gap and innovation stages.
 
@@ -44,11 +57,12 @@ Record settings in `problem.md`:
 | Literature cutoff | none | Set a date only for retrospective tests ("would it have found X before X was published?"). When set, no paper dated on/after it may be read or cited. |
 | Output language | the user's language | JSON keys stay English; search queries stay English since most literature is. |
 | Retrieval backend | `web` | `web` (WebSearch + WebFetch) works everywhere. `api` / `vault` only if `scripts/lit_search.py check` says so. |
+| Idea source | `problem` | `user` when the user brought their own idea (Mode B) |
 
 ## Step 2 — Set up the run
 
 ```bash
-python <skill_dir>/scripts/init_run.py ideation-<short-slug> --depth standard [--cutoff YYYY-MM-DD] [--language zh]
+python <skill_dir>/scripts/init_run.py ideation-<short-slug> --depth standard [--cutoff YYYY-MM-DD] [--language zh] [--user-idea]
 ```
 
 This creates `problem.md`, `plan.md`, `gaps.md`, `candidates.md`, `scores.md` and `papers/`. Fill in `problem.md`, then run `python <skill_dir>/scripts/lit_search.py check` once to learn whether the shell can reach literature APIs (often it cannot in hosted sandboxes; that is fine — `web` is the default).
@@ -67,6 +81,12 @@ You are the <ROLE> in an IdeaScientist ideation run.
 2. Read <skill_dir>/references/retrieval.md for how to search, read papers, and write digests.
 3. Run directory: <run_dir>. The problem is in <run_dir>/problem.md — read it first.
 4. TASK — <the structured fields for this role, below>
+5. HARD CAPS for this call: at most <P> papers read and <S> web searches (see the per-call
+   table in SKILL.md). When you reach either cap, stop gathering and write your artifact
+   with what you have. Do not spawn subagents. Do not wait and retry a refused request.
+   [innovator, reviewer] You may run at most ONE quick numerical sanity check, following
+   <skill_dir>/references/sanity_checks.md (pre-register in checks.md, 5-minute timeout).
+   [gap finder, report writer] Work from the literature only; run no experiments.
 Write only the files your role owns. Reply with the one-line status your role file specifies.
 ```
 
@@ -74,7 +94,7 @@ In this mode, stay **blind to the literature**: do not search or read papers you
 
 **If you cannot spawn subagents** (e.g. claude.ai, or when this skill is itself running inside a subagent): play each role yourself, one at a time. Before each role, re-read its role file and the current run files (do not rely on memory of earlier stages), write that role's artifact completely, then switch back to orchestrating. Record `Execution: inline` in `plan.md`.
 
-Inline runs lose two protections, so compensate deliberately:
+The caps and the sanity-check rules in line 5 of the brief apply to you too. Inline runs lose two protections, so compensate deliberately:
 - *Independence between stages.* Having read the near misses, you will already have a favourite fix, usually the obvious in-domain one. Don't let it leak into `gaps.md`. When you reach the innovator, still list three outside sub-fields and search them before settling — if your favourite survives that comparison, fine. For the reviewer, genuinely switch stance: your job is to find why the candidate should *not* survive.
 - *Blind evaluation.* The non-obviousness check in `references/evaluation.md` §4 can't run; skip it rather than reporting a contaminated score.
 
@@ -85,8 +105,8 @@ Say in the delivery that the run was inline.
 | Role | Owns | Task fields |
 |---|---|---|
 | gap_finder | `gaps.md` | `AXIS:` one axis phrase, copied exactly |
-| innovator | `candidates.md` | `TARGET: C<n>` · `GAP: <axis> — <gap sentence>` · optional `BUILD_ON: C<x>, FOCUS: <dim>` |
-| reviewer | `scores.md` | `TARGET: C<n>` |
+| innovator | `candidates.md` | `TARGET: C<n>` · `GAP: <axis> — <gap sentence>` · optional `BUILD_ON: C<x>, FOCUS: <dim>` · Mode B: `USER_IDEA: yes` (formalize the idea in `problem.md`; don't replace it) |
+| reviewer | `scores.md` | `TARGET: C<n>` · `FINAL: yes` when no rebuilds remain for this direction (verdict must then be survive or reject) · Mode B, first review: `MODE: novelty-survey` |
 | report_writer | `report.json` | `TARGET: C<n>` |
 | (all) | `papers/<id>.md` | digests, written by whoever reads the paper |
 
@@ -98,6 +118,8 @@ Keep tasks narrow. One axis per gap finder, one candidate per innovator call, on
 
 Keep `plan.md` current: the active direction, its status (`forming` → `drilling` → `under_review` → `survived` / `dead` → `complete`), and an append-only history line for every decision (`under_review @ step 5: C2 sent to reviewer — builds on C1, fixes mapping`).
 
+**After every role call, run `python <skill_dir>/scripts/status.py <run_dir>` and obey its last line** (details under *Hard limits* below). This is not optional: it is what keeps a run from going on for hours.
+
 The usual forward path:
 
 1. **Map the landscape.** Spawn a gap finder on the most central axis. Other axes can run in parallel (they are independent). Read the `## Axis:` sections in `gaps.md`. You don't need every axis mapped before committing — go depth-first.
@@ -106,32 +128,70 @@ The usual forward path:
 4. **Review.** Spawn the reviewer on `C<n>`.
 5. **Act on the verdict.**
    - `survive` → go to 6.
-   - `revise(focus=<dim>)` → new innovator call with `BUILD_ON: C<n>, FOCUS: <dim>`, then review the new candidate. After 2–3 revise rounds without a survive, treat it as a reject.
-   - `reject(reason=…)` → the direction is dead; don't rescue it. Pick a different gap (or map a new axis) and return to 3.
+   - `revise(focus=<dim>)` → new innovator call with `BUILD_ON: C<n>, FOCUS: <dim>`, then review the new candidate. When that rebuild is the last one the depth allows, pass `FINAL: yes` to its review, so the verdict is survive or reject and the direction can't loop.
+   - `reject(reason=…)` → the direction is dead (a fatal flaw, or a collision on problem, method and contribution); don't rescue it. Pick a different gap (or map a new axis) and return to 3.
 6. **Commit.** Spawn the report writer on the surviving candidate.
-7. **Validate** — `python <skill_dir>/scripts/validate.py <run_dir>`. Failures go back to the owning role with the validator's message as feedback.
+7. **Validate** — `python <skill_dir>/scripts/validate.py <run_dir>`. FAILs go back to the owning role with the validator's message as feedback; WARNs are advisory and never block delivery. **At most two validate–fix rounds.** If FAILs remain after that, fix them yourself in the cheapest way (drop the offending citation or claim — no new reading) and list what was dropped in the delivery.
 8. **Deliver** (Step 5).
 
-The loop is a graph, not a line. Move backward whenever the files say so: a thin gap survey → another gap finder on the same axis; an innovator that can't find a fillable gap → more landscape; a report writer that can't ground a load-bearing claim → back to the innovator, or to the gap finder if related-work coverage is too thin to defend novelty. Run innovators one at a time per direction — five parallel innovators produce five shallow ideas, while one reviewed-and-revised idea gets sharper.
+The loop is a graph, not a line. Move backward whenever the files say so: a thin gap survey → another gap finder on the same axis; an innovator that can't find a fillable gap → more landscape; a report writer that can't ground a load-bearing claim → back to the innovator, or to the gap finder if related-work coverage is too thin to defend novelty. Every backward move still counts against the hard limits, and `status.py` has the final word. Run innovators one at a time per direction — five parallel innovators produce five shallow ideas, while one reviewed-and-revised idea gets sharper.
 
-**One invariant:** never spawn the report writer until a candidate has a `survive` verdict. If the budget runs out first, you may commit to the best candidate, but say so plainly in the delivery and include the reviewer's strongest objection.
+**One invariant:** never spawn the report writer until a candidate has a `survive` verdict — unless `status.py` says WRAP UP or STOP, in which case commit to the best candidate, say plainly in the delivery that it is a forced commit, and include the reviewer's strongest objection.
 
-### Budgets by depth
+### Mode B — the user brings an idea
+
+The user's idea is the subject of the run, not a seed to replace. Default to keeping and developing it.
+
+1. **Formalize.** Spawn the innovator with `TARGET: C1` and `USER_IDEA: yes`. It writes the user's idea into the candidate schema faithfully, marked `Origin: user`, and reads the papers the idea builds on. It does not swap in a different mechanism.
+2. **Novelty survey.** Spawn the reviewer with `TARGET: C1, MODE: novelty-survey`. It searches for the works closest to the idea, reads them in full (setting, core method, technical details, contribution boundary), and writes the closest-work comparison and either a novelty argument or a collision report (`roles/reviewer.md`). It gets the larger per-call budget below. A gap finder is optional: run one only if the user wants a full proposal and the related-work picture is thin.
+3. **Act on the verdict.**
+   - `survive` → if the user wants a proposal, run the report writer. Otherwise deliver the novelty assessment and offer to develop it.
+   - `revise(focus=…)` → the idea is viable but its positioning or a component needs sharpening. Rebuild with `BUILD_ON: C1, FOCUS: <dim>`: the innovator keeps the user's core idea and changes only what the review asked for. Re-review, with `FINAL: yes` on the last allowed rebuild.
+   - `reject(reason=collision …)` → stop. Deliver the collision report: which papers, where exactly they overlap, and why the remaining differences can't support a credible novelty claim. Don't pivot to a different idea on your own. In the delivery, offer to look for a differentiated variant, or to switch to problem mode on the same problem.
+
+### Hard limits
+
+Two kinds of limit, both firm.
+
+**Per role call.** These go into each subagent's brief (line 5), or you apply them to yourself when running inline. On reaching either cap, stop gathering and write the artifact with what you have.
+
+| Per call: papers read / web searches | quick | standard | deep |
+|---|---|---|---|
+| Gap finder (snowballed papers count too) | 6 / 4 | 10 / 8 | 14 / 12 |
+| Innovator | 3 / 6 | 6 / 10 | 10 / 14 |
+| Reviewer | 3 / 3 | 5 / 5 | 8 / 8 |
+| Reviewer, `MODE: novelty-survey` (Mode B) | 6 / 4 | 10 / 8 | 14 / 12 |
+| Report writer | 3 / 2 | 5 / 4 | 8 / 6 |
+
+**Per run.** `status.py` checks these after every role call:
+
+| Per run | quick | standard | deep |
+|---|---|---|---|
+| Papers read (total) | 20 | 45 | 80 |
+| Axes mapped | 1 | 2 | 3 |
+| Candidates (C1, C2, …) | 2 | 4 | 6 |
+| Wrap-up after | 30 min | 75 min | 150 min |
+| Hard stop after | 45 min | 120 min | 240 min |
+
+What its verdict means:
+- **CONTINUE** — carry on.
+- **WRAP UP** — no new gap-finder or innovator calls. Follow its `Next:` line: at most one more review, then the report writer, validation and delivery.
+- **STOP** — no more reading or searching by anyone. Deliver now with what exists: report writer from existing digests if there's a candidate, otherwise the gap analysis. Never start another loop after STOP.
+
+Other depth settings:
 
 | | quick | standard | deep |
 |---|---|---|---|
-| Axes mapped | 1 | 1–2 | 2–3 |
-| Papers read per gap-finder call | 4–6 | 6–10 | up to 14 |
-| Papers read per innovator call | 2–3 | 3–6 | up to 10 |
-| Papers read per reviewer call | 1–3 | 2–5 | up to 8 |
 | Rebuilds after `revise` (each rebuild is re-reviewed) | 1 | 2 | 3 |
 | Directions tried before forced commit | 1 | 2 | 3 |
 | Report length (`report_writer.md`) | ~1–2k words | ~2.5–4k words | as needed |
 | Self-evaluation (`references/evaluation.md`) | none | §1 quality + §3 transfer | all four, §4 with a blind subagent |
 
-Search budgets per call are in `references/retrieval.md` §3. All of these are per role call and soft: exceed a reading budget when honest coverage needs it (a close near miss often turns up late), and note it under `Deviations` in `plan.md`. When a rebuild budget is spent without a `survive`, pivot to another direction if one is left; otherwise force-commit to the best candidate and flag it (see the invariant above).
+Search budgets are per call (`references/retrieval.md` §3). A quick run should feel quick: one axis, one candidate, at most one rebuild, a short report.
 
-Reading and searching are the main expense. A quick run should feel quick: one axis, one candidate, at most one rebuild, a short report.
+### Resuming after an interruption or context reset
+
+Long runs can be interrupted, or have their context compacted. When that happens, don't reconstruct the run from memory. Re-read `plan.md` (state and history) and run `status.py`. Treat every role call the history marks as done as done: never re-run a stage just because you don't remember its details — read its file instead. If `plan.md` and the artifacts disagree, trust the artifacts.
 
 ### Keeping the user informed
 
@@ -141,7 +201,8 @@ Runs take a while. If the user is present and you have a way to message them mid
 
 1. `python <skill_dir>/scripts/render_report.py <run_dir>` → `report.md` (readable proposal with a linked reference list built from the digests).
 2. Run the self-evaluation that the depth calls for (`references/evaluation.md`; none for quick) and write `evaluation.md`. Present scores as diagnostics, not verdicts — LLM judges and human experts agree only moderately on proposal quality.
-3. In your reply, give a short summary rather than the whole proposal (about 150–250 words for quick, longer only as needed):
+3. **Mode B novelty check only** (no proposal requested): skip steps 1–2. Reply with the verdict; the closest works and how each relates; the reviewer's novelty argument paragraph (or the collision report); and the suggested positioning or next step. Point to `scores.md` and `papers/` for the evidence.
+4. Otherwise, in your reply give a short summary rather than the whole proposal (about 150–250 words for quick, longer only as needed):
    - the one-sentence thesis;
    - the gap (and the near-miss papers that define it);
    - the borrowed mechanism, where it comes from, and why it should transfer;
@@ -159,8 +220,10 @@ Runs take a while. If the user is present and you have a way to message them mid
 | `references/roles/gap_finder.md`, `innovator.md`, `reviewer.md`, `report_writer.md`, `paper_reader.md` | Running (or briefing) that role |
 | `references/schemas.md` | Checking what a run file must contain |
 | `references/retrieval.md` | Before any searching or reading — IDs, the two search regimes, digests, cutoff |
+| `references/sanity_checks.md` | Innovator or reviewer considering a quick numerical check |
 | `references/evaluation.md` | Self-evaluating a finished proposal |
 | `scripts/init_run.py` | Creating a run directory |
+| `scripts/status.py` | After every role call — CONTINUE / WRAP UP / STOP |
 | `scripts/lit_search.py` | `check`, then `search` / `fulltext` when the shell has network or a local vault |
 | `scripts/validate.py` | After each role (optional) and always before delivery |
 | `scripts/render_report.py` | Turning `report.json` into `report.md` |

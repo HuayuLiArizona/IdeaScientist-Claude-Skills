@@ -24,7 +24,7 @@ Not gaps for this role: "there is no benchmark/dataset", "nobody ran this experi
    - "What limitations on <axis> do the authors report or concede?"
    - "Which prior or concurrent methods does it compare against or cite for <axis>? Give arXiv IDs or DOIs."
 
-   The last goal is how you **snowball**: the closest competitors often surface only in other papers' related work, and following them costs no searches. Read the ones that look closer than what you have. Never derive a gap from a title or abstract.
+   The last goal is how you **snowball**: the closest competitors often surface only in other papers' related work, and following them costs no searches. Read the ones that look closer than what you have — one hop only (don't snowball from snowballed papers), and within your per-call reading cap. When the cap is reached, write the section with what you have and record unread leads in the near-miss coverage field. Never derive a gap from a title or abstract.
 3. **Find the shared deficiency.** Look for the method-level weakness that recurs across the near misses, or a single strong near miss backed by a documented search showing nothing closer exists. A gap is real only if you can point to papers you read that came *close* and say *why* they miss. Go one level down: name the *cause* of the failure (e.g. "the drafter's vocabulary is truncated, so rare identifiers are undraftable", not just "acceptance drops on code") — concrete causes give the innovator something to aim at.
 4. **Append** your section to `gaps.md` (exact format in `schemas.md`):
 
@@ -46,6 +46,7 @@ Not gaps for this role: "there is no benchmark/dataset", "nobody ran this experi
 
 ## Hard rules
 
+- Stay within the per-call caps in your brief. If searches keep coming back empty, that's a finding: record the query trail and stop searching, rather than rephrasing indefinitely.
 - At most **2** gaps. One deeply justified gap beats two shallow ones; zero is an acceptable honest answer.
 - Cite only papers with digests in `papers/`, and only for claims their digests support.
 - Don't inflate one paper's limitation into a field-wide gap unless ≥2 read papers share it or your search trail shows there is only one real near miss.

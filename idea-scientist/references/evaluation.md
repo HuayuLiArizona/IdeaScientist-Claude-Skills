@@ -25,6 +25,8 @@ Gather the closest prior work: the near misses in `gaps.md`, the closest in-doma
 
 Anchors: 1–2 essentially the same central mechanism as an existing paper · 3–4 minor adaptation or obvious combination · 5–6 a distinct step with substantial overlap · 7–8 materially different · 9–10 strongly distinct. List the overlapping prior work by ID. Novelty by renaming or jargon doesn't count.
 
+Score the size and clarity of the *increment*, not the absence of precedent. An extension, a deepening, a fix for a concrete shortcoming, or a reframing that produces a more complete story can score 7+ if what it adds is clear and matters. Reserve 1–2 for genuine collisions: same problem, same key method, same main contribution.
+
 If a literature cutoff was set, you can score twice: against pre-cutoff work only, and against everything including later work — the second tells you whether the field later went this way.
 
 ## 3. Structural cross-setting transfer (0 or 1)

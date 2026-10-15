@@ -4,11 +4,14 @@ Every run lives in one directory. Each file has exactly one owner; everyone else
 
 ```
 <run_dir>/
+├── .run_meta.json   init_run.py   — start time and depth, read by status.py
 ├── problem.md       orchestrator  — problem definition, challenge, axes, settings
 ├── plan.md          orchestrator  — active direction, status, history
 ├── gaps.md          gap finder    — one "## Axis:" section per axis
 ├── candidates.md    innovator     — one "### C<n>" block per call
 ├── scores.md        reviewer      — one "### C<n> verdict" block per review
+├── checks.md        innovator / reviewer — pre-registered sanity checks K1, K2, … (format in sanity_checks.md)
+├── checks/K<n>.py   the check scripts
 ├── papers/<id>.md   any reader    — cumulative goal-by-goal digests
 ├── report.json      report writer — the proposal (assets/report_schema.json)
 ├── report.md        render_report.py
@@ -40,6 +43,11 @@ Every run lives in one directory. Each file has exactly one owner; everyone else
 - Literature cutoff: none
 - Output language: en
 - Retrieval backend: web
+- Idea source: problem          ← "user" in Mode B
+- Deliverable: proposal          ← Mode B: "novelty check" or "proposal"
+
+## User idea
+<Mode B only: the user's idea, verbatim>
 
 ## User notes
 - <preferences, things already tried, directions to avoid>
@@ -54,13 +62,15 @@ The challenge describes what fails, never how to fix it.
 
 Goal: ONE focused, well-grounded methodological intuition, developed into a full proposal.
 
+Started: 2026-10-14T15:03:00+0000      ← written by init_run.py; status.py measures elapsed time from it
+
 ## Axes
 - [x] <axis 1> — mapped (2 gaps)
 - [ ] <axis 2>
 
 ## Mode
 - Execution: subagents | inline
-- Deviations: <budgets exceeded and why; checks that could not run, e.g. search exhausted>
+- Deviations: <caps hit, checks that could not run (e.g. search exhausted), forced commits>
 
 ## Active direction
 - Gap: <axis> — <gap sentence>
@@ -100,26 +110,35 @@ At most 2 gaps per axis; each gap starts with a `- **Gap:**` line and has all fi
 
 ```markdown
 ### C<n> — <short title>
+- **Origin:** system | user
 - **Intuition:** …
 - **Gap it attacks:** …
 - **If improving prior candidate:** …        (optional)
-- **Source inspiration:** …
+- **Source inspiration:** … novelty type: new-topic | recombination-of-distant-concepts | reinforcing-a-weak-connection | extension-or-deepening | fixing-a-shortcoming | reframing
 - **How it maps to this problem:** …
 - **Why it could work:** …
 - **Novelty vs. closest in-domain work:** …
 - **Main risk:** …
 ```
 
+For `Origin: user`, Source inspiration may be `user's own construction`, and the novelty line may read `to be assessed in the novelty survey`.
+
 ## scores.md
 
 ```markdown
 ### C<n> verdict
-- **Verdict:** survive | revise(focus=<novelty|coherence|feasibility|clarity|mapping|grounding>) | reject(reason=<…>)
+- **Verdict:** survive | revise(focus=<novelty|coherence|feasibility|clarity|mapping|grounding>) | reject(reason=<…; "collision: …" for a collision>)
 - **Search trail:** <novelty queries run; anything left unchecked>
+- **Closest work:**
+  - [id] — problem: … · method: … · contribution: …
+- **Novelty argument:** <one paragraph: what is added or advanced over the closest work, and why it matters; "n/a — collision" when rejecting for collision>
+- **Collision report:** <only for a collision: papers, where problem/method/contribution coincide, why the differences can't carry a novelty claim>
 - **Evidence:**
   - [id] — …
 - **Strongest objection:** …
 ```
+
+A collision (`reject(reason=collision…)`) requires overlap on core problem, key method *and* main contribution, and every paper in the collision report must have a full-text digest. `validate.py` enforces the latter.
 
 ## papers/<safe_id>.md
 

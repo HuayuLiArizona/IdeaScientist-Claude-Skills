@@ -36,6 +36,11 @@ H = {
         "metrics": "Metrics", "ablations": "Ablations", "predictions": "Falsifiable predictions",
         "pillar": "Pillar", "prediction": "Prediction", "kill": "Falsified if", "limitations": "Limitations",
         "refs": "References", "abstract_only": "abstract only",
+        "checks": "Appendix: toy sanity checks run during ideation",
+        "checks_note": "Small numerical toys used to steer the ideation, each pre-registered with a kill criterion "
+                       "and capped at five minutes. They are not experimental results and are not evidence that the "
+                       "method works. Scripts are in the run directory under checks/.",
+        "question": "Question", "outcome": "Outcome", "by": "run by",
         "footer": "Generated with the idea-scientist skill. "
                   "Intermediate artifacts — gaps.md, candidates.md, scores.md, papers/ — are in the run directory. "
                   "This is an unexecuted research proposal: every prediction is untested.",
@@ -54,6 +59,10 @@ H = {
         "metrics": "指标", "ablations": "消融实验", "predictions": "可证伪的预测",
         "pillar": "检验对象", "prediction": "预测", "kill": "证伪条件", "limitations": "局限性",
         "refs": "参考文献", "abstract_only": "仅摘要",
+        "checks": "附录：构思过程中的玩具验证",
+        "checks_note": "以下是构思时用来辅助判断方向的小规模数值玩具实验，每个都事先写明了证伪标准，"
+                       "运行时间不超过五分钟。它们不是实验结果，也不能证明方法有效。脚本保存在运行目录的 checks/ 下。",
+        "question": "问题", "outcome": "结果", "by": "执行者",
         "footer": "由 idea-scientist skill 生成。"
                   "中间产物 gaps.md、candidates.md、scores.md、papers/ 均在运行目录中。"
                   "本文是尚未执行的研究提案，所有预测均未经实验验证。",
@@ -91,6 +100,33 @@ class Cite:
             return "[" + ", ".join(ids) + "]" if self.keep else "[" + ", ".join(nums) + "]"
 
         return re.sub(r"\[[^\[\]\n]{3,400}\]", repl, text)
+
+
+def _read_checks(run: Path) -> list[dict]:
+    p = run / "checks.md"
+    if not p.exists():
+        return []
+    text = p.read_text(encoding="utf-8", errors="replace")
+    out = []
+    for kid, head, body in re.findall(r"^###\s+(K\d+)\b([^\n]*)\n(.*?)(?=^###\s+K\d+\b|\Z)", text, re.M | re.S):
+        parts = [x.strip() for x in re.split(r"\s+[—-]\s+", head.strip(" —-")) if x.strip()]
+
+        def field(name: str) -> str:
+            m = re.search(rf"\*\*{name}:\*\*[ \t]*(.*)", body)
+            return m.group(1).strip() if m else ""
+
+        concl = field("Conclusion")
+        verdict = (re.match(r"(supports|refutes|inconclusive)", concl, re.I) or [None, "unrecorded"])
+        verdict = verdict[1] if isinstance(verdict, list) else verdict.group(1).lower()
+        out.append({
+            "id": kid,
+            "target": parts[0] if parts else "",
+            "role": parts[1] if len(parts) > 1 else "",
+            "question": field("Question"),
+            "conclusion": re.sub(r"^(supports|refutes|inconclusive)\s*[—:-]?\s*", "", concl, flags=re.I) or field("Result"),
+            "verdict": verdict,
+        })
+    return out
 
 
 def _lst(x) -> list:
@@ -245,6 +281,15 @@ def render(data: dict, run: Path, lang: str, keep_ids: bool) -> str:
             missing = "" if digest_path(run, pid).exists() else " ⚠ no digest"
             w(f"{i}. {title}{date}. `{pid}`.{link}{access}{missing}")
         w("")
+
+    checks = _read_checks(run)
+    if checks:
+        w(f"## {h['checks']}\n")
+        w(f"*{h['checks_note']}*\n")
+        for ck in checks:
+            w(f"**{ck['id']}** ({ck['target']}, {h['by']} {ck['role']}) — **{ck['verdict']}**  ")
+            w(f"{h['question']}: {ck['question']}  ")
+            w(f"{h['outcome']}: {ck['conclusion']}\n")
 
     w("---\n")
     w(f"*{h['footer']}*")

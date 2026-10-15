@@ -2,7 +2,7 @@
 
 The paper reader turns one paper's full text into a short digest that answers specific reading goals. It exists so that no other role reasons from titles or abstracts, and so that full text never floods a planning or writing context.
 
-In practice the reader is usually **WebFetch with a reader prompt** (see `retrieval.md` §4), called by whichever role needs the paper; that role then writes the digest. When the environment allows nested subagents, a role may instead hand the reading to a subagent with this file as its brief.
+In practice the reader is **WebFetch with a reader prompt** (see `retrieval.md` §4), called by whichever role needs the paper; that role then writes the digest. Roles never spawn subagents for reading: nested agents multiply cost and escape the run's limits.
 
 ## Input
 

@@ -2,7 +2,7 @@
 """Validity gates for an idea-scientist run.
 
 Usage:
-    python validate.py <run_dir> [--stage all|papers|gaps|candidates|scores|report]
+    python validate.py <run_dir> [--stage all|papers|gaps|candidates|scores|checks|report]
                        [--cutoff YYYY-MM-DD] [--json]
 
 Checks, mirroring the IdeaScientist reward gates:
@@ -11,7 +11,10 @@ Checks, mirroring the IdeaScientist reward gates:
   gaps        schema per axis; at most 2 gaps; all five gap fields; read-before-cite
   candidates  schema per C<n>; source cited by id; read-before-cite
   scores      verdict format; target candidate exists; read-before-cite
+  checks      sanity checks: all fields, kill criterion written, no pending results,
+              every [check K<n>] reference resolves
   report      valid JSON; every schema field present and filled; no placeholders;
+              [check K<n>] only in falsifiable_predictions / limitations;
               cited ids resolve to digests; heuristics for measured results
 FAIL = must be fixed before delivery (exit code 1). WARN = look at it, use judgment.
 """
@@ -58,6 +61,7 @@ RESULT_RE = re.compile(
     re.I,
 )
 PAST_RESULT_RE = re.compile(r"\b(we observed|our experiments show|results show|we found that|empirically, our)\b", re.I)
+CHECK_REF_RE = re.compile(r"\[\s*check\s+(K\d+)\s*\]", re.I)
 
 
 class Report:
@@ -227,11 +231,20 @@ def check_candidates(run: Path, rep: Report, strict: bool) -> set[str]:
         for field in CANDIDATE_FIELDS:
             if field not in body:
                 rep.fail("candidates", tag + f"missing {field}")
+        origin = re.search(r"\*\*Origin:\*\*[ \t]*(\w+)", body)
+        user_idea = bool(origin and origin.group(1).lower() == "user")
+        if not origin:
+            rep.warn("candidates", tag + "missing **Origin:** (system | user)")
         src = re.search(r"\*\*Source inspiration:\*\*(.*?)(?=\n\s*-\s*\*\*|\Z)", body, re.S)
         if src and not extract_ids(src.group(1)):
-            rep.fail("candidates", tag + "Source inspiration cites no paper id")
+            if user_idea:
+                if "own construction" not in src.group(1).lower():
+                    rep.warn("candidates", tag + "user idea: Source inspiration cites no paper — write "
+                                             "\"user's own construction\" if it draws on none")
+            else:
+                rep.fail("candidates", tag + "Source inspiration cites no paper id")
         nov = re.search(r"\*\*Novelty vs\. closest in-domain work:\*\*(.*?)(?=\n\s*-\s*\*\*|\Z)", body, re.S)
-        if nov and not extract_ids(nov.group(1)):
+        if nov and not extract_ids(nov.group(1)) and not (user_idea and "to be assessed" in nov.group(1).lower()):
             rep.warn("candidates", tag + "novelty line names no closest in-domain paper id")
         check_citations(run, "candidates", body, rep, tag)
     return set(secs)
@@ -264,8 +277,35 @@ def check_scores(run: Path, rep: Report, candidates: set[str], strict: bool) -> 
         if "**Search trail:**" not in body:
             rep.warn("scores", tag + "missing **Search trail:** — list the novelty queries run "
                                      "(or why none could run), so the review can be checked")
+        if "**Closest work:**" not in body:
+            rep.warn("scores", tag + "missing **Closest work:** — compare the closest papers on problem / method / contribution")
+        verdict_line = m.group(0) if m else ""
+        collision = bool(re.search(r"reject\(\s*reason\s*=\s*collision", verdict_line, re.I))
+        if verdicts.get(cid) in ("survive", "revise") and not _field(body, "Novelty argument"):
+            rep.warn("scores", tag + "missing **Novelty argument:** — one paragraph on what is added over the "
+                                     "closest work and why it matters (the report writer reuses it)")
+        if collision:
+            report_text = _field(body, "Collision report")
+            if not report_text:
+                rep.fail("scores", tag + "reject(collision) needs a **Collision report:** — which papers, where problem, "
+                                         "method and contribution coincide, and why the differences can't carry a novelty claim")
+            else:
+                ids = extract_ids(report_text)
+                if not ids:
+                    rep.fail("scores", tag + "Collision report names no paper id")
+                for pid in ids:
+                    meta = read_digest_meta(digest_path(run, pid))
+                    if (meta["access"] or "").lower().startswith("abstract"):
+                        rep.fail("scores", tag + f"collision claimed against [{pid}], but its digest is abstract-only — "
+                                                 "read the full text before concluding a collision")
         check_citations(run, "scores", body, rep, tag)
     return verdicts
+
+
+def _field(body: str, name: str) -> str:
+    """Text of a '- **Name:** ...' field (to the next top-level field), stripped; '' if absent or empty."""
+    m = re.search(rf"\*\*{re.escape(name)}:\*\*(.*?)(?=\n\s*-\s*\*\*[A-Z][^*]*:\*\*|\Z)", body, re.S)
+    return m.group(1).strip() if m else ""
 
 
 # ------------------------------------------------------------------ report
@@ -347,6 +387,10 @@ def check_report(run: Path, rep: Report, verdicts: dict[str, str], strict: bool)
                                "the experiments have not been run; phrase as a prediction or remove")
         if PAST_RESULT_RE.search(s):
             rep.warn("report", f"{path}: past-tense result language ({PAST_RESULT_RE.search(s).group(0)!r})")
+        if CHECK_REF_RE.search(s):
+            if not (path.startswith("$.falsifiable_predictions") or path.startswith("$.limitations")):
+                rep.fail("report", f"{path}: refers to sanity check {CHECK_REF_RE.search(s).group(1)} — toy checks may "
+                                   "only motivate falsifiable_predictions or limitations, never serve as results or evidence")
 
     thesis = data.get("one_sentence_thesis") or ""
     if isinstance(thesis, str) and thesis:
@@ -375,12 +419,56 @@ def check_report(run: Path, rep: Report, verdicts: dict[str, str], strict: bool)
                            "say so explicitly when delivering, with the reviewer's strongest objection")
 
 
+# ------------------------------------------------------------------ checks
+
+CHECK_FIELDS = ["**Question:**", "**Decision impact:**", "**Prediction and kill criterion:**", "**Setup:**",
+                "**Result:**", "**Runtime:**", "**Conclusion:**", "**Script:**"]
+CHECK_LIMITS = {"quick": 1, "standard": 3, "deep": 6}
+
+
+def check_checks(run: Path, rep: Report, report_exists: bool) -> set[str]:
+    text = _read(run / "checks.md")
+    blocks = re.findall(r"^###\s+(K\d+)\b(.*?)(?=^###\s+K\d+\b|\Z)", text, re.M | re.S)
+    ids = [k for k, _ in blocks]
+    dupes = {k for k in ids if ids.count(k) > 1}
+    if dupes:
+        rep.fail("checks", f"duplicate check ids: {sorted(dupes)}")
+    m = re.search(r"Depth:\s*(quick|standard|deep)", _read(run / "problem.md"), re.I)
+    limit = CHECK_LIMITS[(m.group(1).lower() if m else "standard")]
+    if len(set(ids)) > limit:
+        rep.warn("checks", f"{len(set(ids))} sanity checks run; the limit for this depth is {limit}")
+    for kid, body in blocks:
+        tag = f"{kid}: "
+        for field in CHECK_FIELDS:
+            if field not in body:
+                rep.fail("checks", tag + f"missing {field}")
+        crit = re.search(r"\*\*Prediction and kill criterion:\*\*[ \t]*(.*)", body)
+        if crit and len(crit.group(1).strip()) < 10:
+            rep.fail("checks", tag + "kill criterion is empty — it must be written before the check runs")
+        res = re.search(r"\*\*Result:\*\*[ \t]*(.*)", body)
+        if res and res.group(1).strip().lower().startswith("pending"):
+            (rep.fail if report_exists else rep.warn)("checks", tag + "result still 'pending' — record the outcome "
+                                                      "(or 'timed out' / 'error')")
+        concl = re.search(r"\*\*Conclusion:\*\*[ \t]*(\w+)", body)
+        if concl and concl.group(1).lower() not in ("supports", "refutes", "inconclusive", "pending"):
+            rep.warn("checks", tag + f"Conclusion should start with supports | refutes | inconclusive (got {concl.group(1)!r})")
+        script = re.search(r"\*\*Script:\*\*\s*`?([^\s`]+)", body)
+        if script and not (run / script.group(1)).exists():
+            rep.warn("checks", tag + f"script {script.group(1)} not found in the run directory")
+    known = set(ids)
+    for fname in ("candidates.md", "scores.md", "report.json"):
+        for ref in set(CHECK_REF_RE.findall(_read(run / fname))):
+            if ref not in known:
+                rep.fail("checks", f"{fname} refers to [check {ref}], which is not in checks.md")
+    return known
+
+
 # ------------------------------------------------------------------ main
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("run_dir")
-    ap.add_argument("--stage", choices=["all", "papers", "gaps", "candidates", "scores", "report"], default="all")
+    ap.add_argument("--stage", choices=["all", "papers", "gaps", "candidates", "scores", "checks", "report"], default="all")
     ap.add_argument("--cutoff", help="YYYY-MM-DD; defaults to 'Literature cutoff' in problem.md")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
@@ -406,6 +494,8 @@ def main() -> int:
     if st in ("all", "scores", "report"):
         sub = Report()
         verdicts = check_scores(run, rep if st != "report" else sub, cands, st == "scores" or (run / "report.json").exists())
+    if st in ("all", "checks"):
+        check_checks(run, rep, (run / "report.json").exists())
     if st in ("all", "report"):
         check_report(run, rep, verdicts, st == "report")
 

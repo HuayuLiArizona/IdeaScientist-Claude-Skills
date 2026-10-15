@@ -17,7 +17,7 @@ You own `report.json` and may create/extend digests in `papers/`.
 2. **Decide what you will cite**, then read every cited paper that doesn't yet have a digest, in parallel, before writing. Typically: the near misses (related work), the source of the borrowed mechanism, the closest competitor (comparison), and the benchmarks, metrics and baselines in the evaluation plan.
 3. **Ground every artifact you name.** If you mention a benchmark, dataset, metric, model or method as an existing thing, read its paper so you can cite it. If a reasonable choice can't be grounded within budget, present it as a proposed choice rather than as an established fact.
 4. **Assemble the whole JSON object**, filling every field (`schemas.md` lists them). Write prose values in the run's output language; keep JSON keys exactly as in the schema.
-   - `key_novelty` and `method` describe *your* contribution; `comparison_to_sota` names what you'd compare against and how you differ from each.
+   - `key_novelty` and `method` describe *your* contribution; `comparison_to_sota` names what you'd compare against and how you differ from each. Build both on the reviewer's **Closest work** and **Novelty argument** in `scores.md`: state the increment concretely, as the reviewer argued it, neither overclaiming ("first ever") nor underselling.
    - `method` is where the intuition becomes concrete: modules, data flow, objectives, the design choices that matter and why. Specific enough that a competent researcher could start implementing.
    - `theoretical_grounding` states the shared structure between the source setting and this one, and the assumption the transfer rests on.
    - **Practicality.** When the user cares about deployment, efficiency or "能落地", estimate the method's own overhead (extra compute, latency, memory, data or labels needed) in `method.design_choices`, and make at least one falsifiable prediction about it. A method whose overhead eats its gain is not a solution, and reviewers ask this first.
@@ -25,7 +25,7 @@ You own `report.json` and may create/extend digests in `papers/`.
    - `limitations`: 3–5, including the reviewer's strongest objection if it still stands and any check that could not be completed (from the search trail).
    - If a field seems not to apply, still address it (`"base_model": "none — training-free because …"`) rather than dropping the key.
 5. **Write** `report.json` as a single valid JSON object. Build it in a short Python script and `json.dump(..., ensure_ascii=False, indent=1)` it — hand-writing a large JSON with quotes, code and non-English prose almost always breaks escaping.
-6. **Self-check**: `python <skill_dir>/scripts/validate.py <run_dir> --stage report`, and fix anything it reports.
+6. **Self-check**: `python <skill_dir>/scripts/validate.py <run_dir> --stage report`. Fix every FAIL; WARNs are advisory. At most two check–fix rounds. If FAILs remain after that, remove the offending citation or claim rather than doing new reading, and mention it in your reply.
 
 ## Length by depth
 

@@ -41,7 +41,7 @@ There is one search tool; what changes is how you phrase queries.
 
 **Same-problem regime** (gap finder, reviewer, report writer when grounding related work). Goal: find the close prior methods on *this* problem so a gap claim is defended against the real competition.
 - Use the exact terminology of the axis and the problem definition, plus the field's usual synonyms.
-- **Snowball.** After reading the first two or three close papers, ask the reader for "the closest prior or concurrent methods this paper compares against or cites, with arXiv IDs or DOIs". Their related-work sections find competitors your queries missed, and cost no searches.
+- **Snowball — one hop.** After reading the first two or three close papers, ask the reader for "the closest prior or concurrent methods this paper compares against or cites, with arXiv IDs or DOIs". Their related-work sections find competitors your queries missed, and cost no searches. Snowball only from papers you found by searching, never from papers you found by snowballing — otherwise each read spawns more reads with no end. Snowballed papers count against your per-call reading cap.
 - Thin coverage is how fake gaps happen: if the pool looks thin, rephrase.
 
 **Cross-domain regime** (innovator; report writer when grounding the borrowed mechanism). Goal: find a mechanism that beat an *analogous* challenge somewhere else.
@@ -70,7 +70,7 @@ If `IDEASCIENTIST_KEYWORD_INDEX` and `IDEA_VAULT_DB` point to existing files: `s
 
 ### The search budget
 
-Web search is rate-limited per turn, and the limit is shared by everything running at the same time — parallel subagents can exhaust it for each other. Treat searches as scarce:
+Web search is rate-limited per turn, and the limit is shared by everything running at the same time — parallel subagents can exhaust it for each other. Treat searches as scarce. The upper number in each cell is a hard cap for that role call (it matches the per-call table in `SKILL.md`):
 
 | Role call | quick | standard | deep |
 |---|---|---|---|
@@ -81,8 +81,8 @@ Web search is rate-limited per turn, and the limit is shared by everything runni
 
 Make every query count (specific, not paraphrases of each other), prefer snowballing for same-problem coverage, and in the reviewer run the novelty search *first* — it's the search that matters most.
 
-If search becomes unavailable mid-run:
-1. Keep going with what costs no search: snowball from papers already read, and fetch papers whose IDs you already know.
+If search becomes unavailable mid-run (two consecutive searches refused or rate-limited), stop searching for the rest of the call — never wait and retry:
+1. Keep going with what costs no search: one-hop snowballing from papers already read, and papers whose IDs you already know, within your reading cap.
 2. Record the coverage gap in the artifact you're writing, as a `Search coverage:` note listing the queries you could not run.
 3. Make sure the gap reaches the user: the report's `limitations` and the final reply should say which checks were incomplete.
 
@@ -146,6 +146,6 @@ Search engines can't filter by date: check IDs and dates in results before readi
 ## 7. Failure handling
 
 - Read what the claim needs, then stop.
-- arXiv rate-limits bursts. If a fetch is refused or rate-limited, don't hammer the same URL; move to another paper or another legitimate copy (publisher, ACL Anthology, OpenReview, preprint server).
+- arXiv rate-limits bursts. If a fetch is refused or rate-limited, try at most one other URL for the same paper (`/html/` ↔ `/pdf/`, or another legitimate copy: publisher, ACL Anthology, OpenReview, preprint server), then move on to another paper. Never sleep, wait or loop on a refused request.
 - If a site is refused for policy or legal reasons, don't route around it with mirrors or caches; pick another paper.
 - If searching keeps returning nothing relevant, that is information: record the query trail rather than padding with loosely related papers.
