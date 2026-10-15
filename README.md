@@ -7,9 +7,9 @@ A Claude skill that turns an open research problem into **one grounded, novel re
 It adapts the agent pipeline from [*IdeaScientist: Orchestrating Agents for Grounded Scientific Ideation*](https://arxiv.org/abs/2610.04074) (Liu et al., 2026) into a skill that runs inside Claude: no model server, no offline corpus, no training.
 
 ```text
-You:    Speculative decoding's draft acceptance collapses on code and long context.
-        I don't want a bigger drafter or per-domain distillation. Give me a
-        novel, practical research idea as a full proposal.
+You:    /idea-scientist Speculative decoding's draft acceptance collapses on code and
+        long context. I don't want a bigger drafter or per-domain distillation.
+        Give me a novel, practical research idea as a full proposal.
 
 Claude: [maps prior work → finds a methodological gap → borrows a mechanism
          from another field → an adversarial reviewer tries to kill it →
@@ -90,35 +90,41 @@ ln -s "$PWD/IdeaScientist-Claude-Skills/idea-scientist" ~/.claude/skills/idea-sc
 ### Claude.ai / Claude desktop app
 
 1. Make sure code execution is on (**Settings → Capabilities** on Free, Pro and Max plans; on Team and Enterprise it is managed by your organization).
-2. Build a ZIP of the `idea-scientist` folder:
+2. Build a ZIP of the `idea-scientist` folder. The commands below also drop the `disable-model-invocation` line from `SKILL.md`. That field is Claude Code–specific and not part of the standard skill format, which Claude.ai's uploader validates against.
    ```bash
    git clone https://github.com/HuayuLiArizona/IdeaScientist-Claude-Skills.git
    cd IdeaScientist-Claude-Skills
-   zip -r idea-scientist.zip idea-scientist
+   mkdir -p build && cp -r idea-scientist build/
+   grep -v '^disable-model-invocation:' idea-scientist/SKILL.md > build/idea-scientist/SKILL.md
+   (cd build && zip -r ../idea-scientist.zip idea-scientist)
    ```
-   GitHub's *Download ZIP* button wraps the whole repository in `IdeaScientist-Claude-Skills-main/`, so that file can't be uploaded as is. Unzip it and zip only the `idea-scientist` folder inside.
+   GitHub's *Download ZIP* button wraps the whole repository in `IdeaScientist-Claude-Skills-main/`, so that file can't be uploaded as is. Unzip it and zip only the `idea-scientist` folder inside, after deleting that line.
 3. Go to **Customize → Skills → + → Create skill → Upload a skill** and choose `idea-scientist.zip`.
 
 See [Use skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude) for plan-specific details.
 
 ## Usage
 
-Just describe the problem. The skill triggers on requests for research ideas, research gaps, proposals, novel methods or cross-domain inspiration, in English or Chinese (科研 idea, 找 gap, 创新点, 开题).
+Run it explicitly with `/idea-scientist`, followed by your problem, topic, paper or idea, in English or Chinese. The skill **does not start on its own**: ordinary questions about research ideas get a normal answer, because a full run reads dozens of papers and takes a while. Typing `/idea-scientist` with nothing after it makes Claude ask what you want to work on.
 
 ```text
-Single-cell batch correction (Harmony, scVI…) erases real biology when batch is
-confounded with condition. Give me one fresh method idea — quick but grounded.
+/idea-scientist quick: single-cell batch correction (Harmony, scVI…) erases real
+biology when batch is confounded with condition. One fresh method idea, grounded.
 ```
 
 ```text
-我在做 LLM 推理加速，speculative decoding 在代码和长上下文上接受率暴跌……
+/idea-scientist 我在做 LLM 推理加速，speculative decoding 在代码和长上下文上接受率暴跌……
 帮我想一个有新意、能落地的研究 idea，并写成完整的研究提案。
 ```
 
 ```text
-Retrospective test: use only literature published before 2025-06-01.
+/idea-scientist Retrospective test, use only literature published before 2025-06-01.
 Problem: RAG answers badly when retrieved passages contradict each other …
 ```
+
+How strictly "explicit only" is enforced depends on the platform:
+- **Claude Code** enforces it with `disable-model-invocation: true`. Claude can't start the skill itself, but `/idea-scientist` always works.
+- **Claude.ai** has no such switch, so there it relies on the skill's description, which tells Claude to run it only when you ask for it by name.
 
 If you give only a topic, Claude proposes two or three concrete (problem, challenge) framings for you to pick from. If you give a paper, it extracts the problem and the limitation you care about.
 
@@ -127,9 +133,9 @@ If you give only a topic, Claude proposes two or three concrete (problem, challe
 Bring an idea of your own and the skill switches to **user-idea mode**. It treats your idea as the thing to develop, not a seed to replace:
 
 ```text
-My idea: treat poisoned sensors in inverse PINNs like biased observations in data
-assimilation, and estimate their error inflation online. Has anyone done this?
-Check the novelty.
+/idea-scientist My idea: treat poisoned sensors in inverse PINNs like biased
+observations in data assimilation, and estimate their error inflation online.
+Has anyone done this? Check the novelty.
 ```
 
 1. Your idea is written up faithfully as candidate C1, without swapping in a different mechanism.

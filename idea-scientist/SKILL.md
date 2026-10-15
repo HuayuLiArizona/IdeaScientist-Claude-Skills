@@ -1,6 +1,7 @@
 ---
 name: idea-scientist
-description: Turn an open research problem into ONE grounded research proposal with the IdeaScientist method — a gap finder pins down a methodological gap in close prior work, an innovator borrows a mechanism from a field that solved an analogous challenge, a reviewer reads the closest work in full and argues novelty, and a report writer develops the survivor into a proposal where every citation was actually read. Use whenever someone wants a research idea, a novel method for a technical challenge, a research proposal or 开题 direction, a research gap, cross-domain inspiration, or "what could I try for X" — even if they never say "proposal". Also use when someone brings their OWN idea and asks whether it is novel, whether it's been done, or how to position and develop it (查新、撞车、有没有人做过、novelty check). Also for 科研idea、研究想法、创新点、找gap、研究提案. Not for plain literature surveys, summarizing a given paper, running experiments, or writing up results already obtained.
+description: IdeaScientist research ideation — run ONLY when explicitly requested, i.e. the user types /idea-scientist or asks by name to use the idea-scientist skill. Do not start it on your own for ordinary questions about research ideas, gaps, novelty or proposals; answer those normally, and at most mention that /idea-scientist can do a full run. When invoked, it turns an open research problem into ONE grounded research proposal (gap finder → cross-domain innovator → reviewer who reads the closest work in full and argues novelty → report writer; every citation actually read), or checks the novelty of the user's own idea (查新/撞车) and develops it.
+disable-model-invocation: true
 ---
 
 # IdeaScientist
@@ -37,6 +38,8 @@ Two disciplines make the output trustworthy:
 - **Read before cite.** A paper may be cited only if a digest for it exists in `papers/`. Fabricated near-miss papers are the easiest way for ideation to look good while being wrong, so `scripts/validate.py` checks this mechanically.
 
 ## Step 1 — Intake: pin down the problem and the challenge
+
+This skill runs only on explicit request (`/idea-scientist`). Treat any text that came with the command as the request: a problem, a paper, a topic or the user's own idea, plus options such as depth, a cutoff date or "novelty check only". In Claude Code that text is appended at the end of this file as `ARGUMENTS:`. If the command came with no text and the conversation doesn't already make the request clear, ask in one short message for the problem or idea, and optionally depth and output language.
 
 The method needs two inputs: a **problem definition** (setting, inputs, outputs, what may change) and a **challenge** (what current solutions fail at, why it matters, a concrete failing case). Write them to `problem.md` (template created by `init_run.py`).
 

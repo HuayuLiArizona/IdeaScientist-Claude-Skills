@@ -7,7 +7,7 @@
 它把论文 [*IdeaScientist: Orchestrating Agents for Grounded Scientific Ideation*](https://arxiv.org/abs/2610.04074)（Liu et al., 2026）里的多智能体流程改写成在 Claude 里直接运行的 skill。不需要部署模型服务，不需要离线语料库，也不需要训练。
 
 ```text
-你：    speculative decoding 在代码和长上下文上接受率暴跌，
+你：    /idea-scientist speculative decoding 在代码和长上下文上接受率暴跌，
         不想换更大的 draft model，也不想按领域单独蒸馏。帮我想个有新意、能落地的 idea，写成完整提案。
 
 Claude：[梳理相关工作 → 找出方法层面的缺口 → 从别的领域借一个机制 →
@@ -87,35 +87,41 @@ ln -s "$PWD/IdeaScientist-Claude-Skills/idea-scientist" ~/.claude/skills/idea-sc
 ### Claude.ai / Claude 桌面版
 
 1. 确认已开启代码执行。Free、Pro、Max 套餐在 **Settings → Capabilities** 里打开；Team 和 Enterprise 由组织管理员控制。
-2. 把 `idea-scientist` 文件夹打成 ZIP：
+2. 把 `idea-scientist` 文件夹打成 ZIP。下面的命令会顺带去掉 `SKILL.md` 里的 `disable-model-invocation` 这一行。这个字段是 Claude Code 专有的，不在标准 skill 格式里，而 Claude.ai 的上传会按标准格式校验。
    ```bash
    git clone https://github.com/HuayuLiArizona/IdeaScientist-Claude-Skills.git
    cd IdeaScientist-Claude-Skills
-   zip -r idea-scientist.zip idea-scientist
+   mkdir -p build && cp -r idea-scientist build/
+   grep -v '^disable-model-invocation:' idea-scientist/SKILL.md > build/idea-scientist/SKILL.md
+   (cd build && zip -r ../idea-scientist.zip idea-scientist)
    ```
-   GitHub 网页上 *Download ZIP* 下载的文件，外面多包了一层 `IdeaScientist-Claude-Skills-main/`，不能直接上传。需要先解压，再只把里面的 `idea-scientist` 文件夹压缩成 ZIP。
+   GitHub 网页上 *Download ZIP* 下载的文件，外面多包了一层 `IdeaScientist-Claude-Skills-main/`，不能直接上传。需要先解压，删掉那一行，再只把里面的 `idea-scientist` 文件夹压缩成 ZIP。
 3. 进入 **Customize → Skills → + → Create skill → Upload a skill**，选择 `idea-scientist.zip`。
 
 各套餐的具体要求见 [Use skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude)。
 
 ## 使用
 
-直接描述你的问题就行。提到研究 idea、找 gap、创新点、开题方向、研究提案、新方法或跨领域启发时，中英文都会触发。
+用 `/idea-scientist` 主动唤起，后面跟上你的问题、方向、论文或 idea，中英文都可以。这个 skill **不会自动启动**：平时问研究 idea 相关的问题，Claude 会正常回答。这样设计是因为完整跑一轮要读几十篇论文，耗时较长。只输入 `/idea-scientist` 不带内容时，Claude 会先问你想做什么。
 
 ```text
-我在做 LLM 推理加速，speculative decoding 在代码和长上下文上接受率暴跌……
+/idea-scientist 我在做 LLM 推理加速，speculative decoding 在代码和长上下文上接受率暴跌……
 帮我想一个有新意、能落地的研究 idea，并写成完整的研究提案。
 ```
 
 ```text
-单细胞批次校正（Harmony、scVI 等）在批次和疾病状态混杂时会把真实的生物信号也校正掉。
-给我一个新方法 idea，快一点，但要有依据。
+/idea-scientist quick：单细胞批次校正（Harmony、scVI 等）在批次和疾病状态混杂时
+会把真实的生物信号也校正掉。给我一个新方法 idea，快一点，但要有依据。
 ```
 
 ```text
-回溯测试：只用 2025-06-01 之前发表的文献。
+/idea-scientist 回溯测试，只用 2025-06-01 之前发表的文献。
 问题：检索到的段落互相矛盾时，RAG 系统的回答很差……
 ```
+
+"只在主动唤起时运行"在不同平台上的保证程度不同：
+- **Claude Code**：通过 `disable-model-invocation: true` 强制保证。Claude 无法自行启动这个 skill，但 `/idea-scientist` 始终可用。
+- **Claude.ai**：没有对应的开关，只能靠 skill 的描述来约束。描述里明确写了"只有用户点名要求时才运行"。
 
 只给一个大方向时，Claude 会先提出两三种具体的（问题，挑战）表述让你挑；给一篇论文时，它会提取出问题和你关心的局限。
 
@@ -124,7 +130,7 @@ ln -s "$PWD/IdeaScientist-Claude-Skills/idea-scientist" ~/.claude/skills/idea-sc
 如果你带着自己的 idea 来，skill 会切换到 **user-idea 模式**。它会把你的 idea 当作要发展的对象，而不是拿来替换的种子：
 
 ```text
-我的 idea：把逆问题 PINN 里被投毒的传感器，看成数据同化里有偏差的观测，
+/idea-scientist 我的 idea：把逆问题 PINN 里被投毒的传感器，看成数据同化里有偏差的观测，
 在线估计它们的误差膨胀系数。这个方向有人做过吗？帮我查一下 novelty。
 ```
 
