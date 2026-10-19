@@ -1,8 +1,8 @@
 # Self-evaluation of a finished proposal
 
-Which parts to run depends on depth: none for `quick`, §1 and §3 for `standard`, all four for `deep` — or all four whenever the user asks how good the idea is or wants to compare runs. Write results to `evaluation.md` in the run directory.
+Which parts to run depends on depth: none for `quick`, §1, §3 and §5 for `standard`, all five for `deep` — or all five whenever the user asks how good the idea is or wants to compare runs. Write results to `evaluation.md` in the run directory.
 
-These rubrics follow the evaluation in the IdeaScientist paper (six proposal-quality dimensions, novelty against the closest work, structural cross-setting transfer, and mechanism non-obviousness). Treat the scores as diagnostics. In the paper, two human experts agreed with each other only at r≈0.56 on proposal quality, and the best LLM judges matched the human average about as well — useful signal, not ground truth. Judges also reward length and confident phrasing; score what is stated, not how it is said.
+These rubrics follow the evaluation in the IdeaScientist paper (six proposal-quality dimensions, novelty against the closest work, structural cross-setting transfer, and mechanism non-obviousness); §5, the idea-shape diagnostics, is this skill's addition. Treat the scores as diagnostics. In the paper, two human experts agreed with each other only at r≈0.56 on proposal quality, and the best LLM judges matched the human average about as well — useful signal, not ground truth. Judges also reward length and confident phrasing; score what is stated, not how it is said.
 
 ## 1. Proposal quality (1–10 each)
 
@@ -58,6 +58,18 @@ Use the upper levels only if you can name the missing step. If Pass A produced n
 
 Without subagents you cannot run Pass A blind — skip this metric and say why, rather than reporting a contaminated score.
 
+## 5. Idea shape (diagnostics, no score)
+
+§1 rewards soundness and specificity, and guards add both, so a careful but timid proposal can score well there. This section catches that. Record, from `report.json`, `candidates.md` and `scores.md`:
+
+- **Lever:** `key_novelty.lever`, the strongest alternative lever, and whether `proposed_evaluation.baselines` includes a method built on that alternative.
+- **Core share:** the method's modules sorted into core / support / guard (`thinking_traps.md`, T2), with counts. Flag it when guards are at least as many as core and support together.
+- **Upside:** is there an `upside` prediction on the problem's standard metric, with an expected size? Flag it when the main gain appears only on a metric the proposal defines.
+- **Prediction mix:** predictions counted by `kind`; flag it when `safety` + `cost` exceed half.
+- **Traps:** one line per trap T1–T5 — present or absent, with the evidence.
+
+If the user compares several runs, add a table of their levers. The same lever across unrelated problems is the clearest sign of fixation (T3).
+
 ## evaluation.md format
 
 ```markdown
@@ -79,6 +91,10 @@ Quote: "…"
 
 ## Mechanism non-obviousness
 Level: non_obvious_step (0.67) — closest blind candidate C2; missing step: …
+
+## Idea shape
+Lever: inference (alternative: representation — baseline included: yes) · core/support/guard: 2/2/1 · upside on standard metric: stated · predictions: upside 2, mechanism 2, safety 1, cost 1
+Traps: T1 absent · T2 absent · T3 absent · T4 present — kept the base model frozen without a user constraint · T5 absent
 
 ## Caveats
 <self-judged; single judge; what would change the scores>

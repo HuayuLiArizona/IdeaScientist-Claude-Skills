@@ -9,13 +9,16 @@ Checks, mirroring the IdeaScientist reward gates:
   papers      digest structure; Date format; under a cutoff, both the paper's date and the
               date of the version actually read must precede it
   gaps        schema per axis; at most 2 gaps; all five gap fields; read-before-cite
-  candidates  schema per C<n>; source cited by id; read-before-cite
-  scores      verdict format; target candidate exists; read-before-cite
+  candidates  schema per C<n>; source cited by id; read-before-cite; lever named and
+              compared with alternatives; fresh candidates not all on one lever
+  scores      verdict format; target candidate exists; idea-shape line; read-before-cite
   checks      sanity checks: all fields, kill criterion written, no pending results,
               every [check K<n>] reference resolves
   report      valid JSON; every schema field present and filled; no placeholders;
               [check K<n>] only in falsifiable_predictions / limitations;
-              cited ids resolve to digests; heuristics for measured results
+              cited ids resolve to digests; heuristics for measured results;
+              prediction kinds (an upside prediction; safety + cost at most half);
+              lever named; thesis that reads like an analysis paper
 FAIL = must be fixed before delivery (exit code 1). WARN = look at it, use judgment.
 """
 
@@ -30,6 +33,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from _ids import arxiv_yymm, canonical, digest_path, extract_ids, read_digest_meta  # noqa: E402
+from _levers import LEVERS, is_rebuild, parse_lever  # noqa: E402
 
 SCHEMA_PATH = HERE.parent / "assets" / "report_schema.json"
 
@@ -42,6 +46,8 @@ GAP_FIELDS = [
 CANDIDATE_FIELDS = [
     "**Intuition:**",
     "**Gap it attacks:**",
+    "**Lever:**",
+    "**Core bet:**",
     "**Source inspiration:**",
     "**How it maps to this problem:**",
     "**Why it could work",
@@ -49,7 +55,7 @@ CANDIDATE_FIELDS = [
     "**Main risk:**",
 ]
 VERDICT_RE = re.compile(
-    r"\*\*Verdict:\*\*\s*`?(survive|revise\(\s*focus\s*=\s*(novelty|coherence|feasibility|clarity|mapping|grounding)\s*\)"
+    r"\*\*Verdict:\*\*\s*`?(survive|revise\(\s*focus\s*=\s*(novelty|coherence|feasibility|clarity|mapping|grounding|ambition|lever)\s*\)"
     r"|reject\(\s*reason\s*=.+?\))`?",
     re.I,
 )
@@ -62,6 +68,14 @@ RESULT_RE = re.compile(
 )
 PAST_RESULT_RE = re.compile(r"\b(we observed|our experiments show|results show|we found that|empirically, our)\b", re.I)
 CHECK_REF_RE = re.compile(r"\[\s*check\s+(K\d+)\s*\]", re.I)
+PRED_KINDS = ("upside", "mechanism", "safety", "cost")
+ANALYSIS_THESIS_RE = re.compile(
+    r"^\s*(?:(?:we|this (?:paper|work|proposal))\s+)?(?:systematically\s+)?"
+    r"(?:analy[sz]e|investigate|probe|characteri[sz]e|benchmark|examine|diagnose|measure|study whether)(?:s|d|ed)?(?=\s)"
+    r"|^\s*an?\s+(?:systematic\s+)?(?:analysis|study|benchmark|investigation)\s+of\b"
+    r"|^\s*(?:本文|我们|本提案)?\s*(?:系统(?:性)?地?)?\s*(?:分析|探究|探讨|考察|刻画|诊断|测量)",
+    re.I,
+)
 
 
 class Report:
@@ -246,7 +260,21 @@ def check_candidates(run: Path, rep: Report, strict: bool) -> set[str]:
         nov = re.search(r"\*\*Novelty vs\. closest in-domain work:\*\*(.*?)(?=\n\s*-\s*\*\*|\Z)", body, re.S)
         if nov and not extract_ids(nov.group(1)) and not (user_idea and "to be assessed" in nov.group(1).lower()):
             rep.warn("candidates", tag + "novelty line names no closest in-domain paper id")
+        lv = parse_lever(body)
+        if lv["present"]:
+            if not lv["lever"]:
+                rep.warn("candidates", tag + f"Lever {lv['raw_head'][:40]!r} is not one of {', '.join(LEVERS)} — "
+                                         "fine if none fits, but check it isn't a relabelled objective change")
+            elif not user_idea and len(lv["alternatives"]) < 2:
+                rep.warn("candidates", tag + "Lever line compares against fewer than 2 other levers — list the "
+                                         "alternatives considered and why each lost (thinking_traps.md, T3)")
         check_citations(run, "candidates", body, rep, tag)
+    fresh = {cid: parse_lever(b)["lever"] for cid, b in secs.items()
+             if not is_rebuild(b) and not re.search(r"\*\*Origin:\*\*[ \t]*user", b, re.I)}
+    fresh_levers = {lv for lv in fresh.values() if lv}
+    if len(fresh) >= 2 and len(fresh_levers) == 1:
+        rep.warn("candidates", f"every fresh candidate ({', '.join(fresh)}) uses the '{fresh_levers.pop()}' lever — "
+                               "pass AVOID_LEVER to the next fresh innovator call (thinking_traps.md, T3)")
     return set(secs)
 
 
@@ -267,7 +295,7 @@ def check_scores(run: Path, rep: Report, candidates: set[str], strict: bool) -> 
         m = VERDICT_RE.search(body)
         if not m:
             rep.fail("scores", tag + "Verdict must be survive | revise(focus=<novelty|coherence|feasibility|"
-                                     "clarity|mapping|grounding>) | reject(reason=<...>)")
+                                     "clarity|mapping|grounding|ambition|lever>) | reject(reason=<...>)")
         else:
             verdicts[cid] = m.group(1).split("(")[0].lower()
         if "**Evidence:**" not in body:
@@ -279,6 +307,9 @@ def check_scores(run: Path, rep: Report, candidates: set[str], strict: bool) -> 
                                      "(or why none could run), so the review can be checked")
         if "**Closest work:**" not in body:
             rep.warn("scores", tag + "missing **Closest work:** — compare the closest papers on problem / method / contribution")
+        if "**Idea shape:**" not in body:
+            rep.warn("scores", tag + "missing **Idea shape:** — lever, core/support/guard counts, dominating "
+                                     "alternative lever, upside on the standard metric (reviewer.md step 7)")
         verdict_line = m.group(0) if m else ""
         collision = bool(re.search(r"reject\(\s*reason\s*=\s*collision", verdict_line, re.I))
         if verdicts.get(cid) in ("survive", "revise") and not _field(body, "Novelty argument"):
@@ -399,6 +430,31 @@ def check_report(run: Path, rep: Report, verdicts: dict[str, str], strict: bool)
             rep.warn("report", f"one_sentence_thesis has {len(thesis.split())} words (aim for under 30)")
         elif ascii_ratio <= 0.8 and len(thesis) > 90:
             rep.warn("report", f"one_sentence_thesis has {len(thesis)} characters — keep it to one short sentence")
+    if isinstance(thesis, str) and ANALYSIS_THESIS_RE.search(thesis):
+        rep.warn("report", "one_sentence_thesis reads like an analysis paper (\"we analyze / investigate …\") — "
+                           "the contribution must be a method; lead with what it builds (thinking_traps.md, T1)")
+    preds = data.get("falsifiable_predictions")
+    if isinstance(preds, list) and preds:
+        kinds = []
+        for i, p_ in enumerate(preds):
+            k = (p_.get("kind") if isinstance(p_, dict) else None) or ""
+            k = k.strip().lower() if isinstance(k, str) else ""
+            if k and k not in PRED_KINDS:
+                rep.warn("report", f"$.falsifiable_predictions[{i}].kind: {k!r} is not one of {', '.join(PRED_KINDS)}")
+            kinds.append(k)
+        if "upside" not in kinds:
+            rep.fail("report", "no falsifiable prediction of kind 'upside' — state what the core bet buys on the "
+                               "problem's standard metric, with the expected size (report_writer.md)")
+        defensive = sum(k in ("safety", "cost") for k in kinds)
+        if defensive * 2 > len(kinds):
+            rep.warn("report", f"{defensive} of {len(kinds)} predictions are safety/cost — a proposal that mostly "
+                               "promises 'no worse than the baseline' promises little (thinking_traps.md, T2)")
+    kn = data.get("key_novelty")
+    lever_text = kn.get("lever") if isinstance(kn, dict) else None
+    if isinstance(lever_text, str) and lever_text.strip() and not re.search(
+            r"\b(" + "|".join(LEVERS) + r")\b", lever_text, re.I):
+        rep.warn("report", "key_novelty.lever names none of " + ", ".join(LEVERS) + " — fine if none fits, "
+                           "but say plainly what the method changes")
     lim = data.get("limitations")
     if isinstance(lim, list) and not 3 <= len(lim) <= 5:
         rep.warn("report", f"limitations has {len(lim)} items (aim for 3-5)")

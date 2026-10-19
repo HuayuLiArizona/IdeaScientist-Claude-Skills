@@ -35,6 +35,7 @@ H = {
         "esetting": "Setting", "benchmarks": "Benchmarks", "new": "newly constructed", "baselines": "Baselines",
         "metrics": "Metrics", "ablations": "Ablations", "predictions": "Falsifiable predictions",
         "pillar": "Pillar", "prediction": "Prediction", "kill": "Falsified if", "limitations": "Limitations",
+        "kind": "Kind", "lever": "Lever",
         "refs": "References", "abstract_only": "abstract only",
         "checks": "Appendix: toy sanity checks run during ideation",
         "checks_note": "Small numerical toys used to steer the ideation, each pre-registered with a kill criterion "
@@ -58,6 +59,7 @@ H = {
         "esetting": "评估设定", "benchmarks": "基准", "new": "新构建", "baselines": "基线方法",
         "metrics": "指标", "ablations": "消融实验", "predictions": "可证伪的预测",
         "pillar": "检验对象", "prediction": "预测", "kill": "证伪条件", "limitations": "局限性",
+        "kind": "类型", "lever": "改动杠杆",
         "refs": "参考文献", "abstract_only": "仅摘要",
         "checks": "附录：构思过程中的玩具验证",
         "checks_note": "以下是构思时用来辅助判断方向的小规模数值玩具实验，每个都事先写明了证伪标准，"
@@ -161,6 +163,8 @@ def render(data: dict, run: Path, lang: str, keep_ids: bool) -> str:
     kn = data.get("key_novelty") or {}
     w(f"## 2. {h['novelty']}: {c.sub(kn.get('main_idea'))}\n")
     w("\n".join(f"- {c.sub(x)}" for x in _lst(kn.get("explanation"))) + "\n")
+    if kn.get("lever"):
+        w(f"**{h['lever']}:** {c.sub(kn['lever'])}\n")
 
     pd = data.get("problem_definition") or {}
     w(f"## 3. {h['definition']}\n")
@@ -256,11 +260,11 @@ def render(data: dict, run: Path, lang: str, keep_ids: bool) -> str:
     fp = _lst(data.get("falsifiable_predictions"))
     if fp:
         w(f"## 10. {h['predictions']}\n")
-        w(f"| {h['pillar']} | {h['prediction']} | {h['kill']} |\n|---|---|---|")
+        w(f"| {h['kind']} | {h['pillar']} | {h['prediction']} | {h['kill']} |\n|---|---|---|---|")
         for p in fp:
             if isinstance(p, dict):
                 cells = [c.sub(p.get(k)).replace("|", "\\|").replace("\n", " ")
-                         for k in ("pillar", "prediction", "kill_condition")]
+                         for k in ("kind", "pillar", "prediction", "kill_condition")]
                 w("| " + " | ".join(cells) + " |")
         w("")
 

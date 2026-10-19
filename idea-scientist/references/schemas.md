@@ -79,7 +79,7 @@ Started: 2026-10-14T15:03:00+0000      ← written by init_run.py; status.py mea
 
 ## History
 - `forming` @1: mapped axis 1; gap 1.2 has the best-grounded near misses
-- `drilling` @2: C1 created, new intuition from <source field>
+- `drilling` @2: C1 created [inference], new intuition from <source field>
 - `under_review` @3: C1 → reviewer
 - `drilling` @4: C1 revise(focus=mapping) → C2 builds on C1
 ```
@@ -100,11 +100,12 @@ One section per axis:
 - **Gap:** …
 - **Near-miss methods and coverage:** …
 - **Methodological deficiency:** …
+- **Alternative cause:** …                (optional)
 - **Why it matters:** …
 - **Evidence route:** …
 ```
 
-At most 2 gaps per axis; each gap starts with a `- **Gap:**` line and has all five fields. Zero gaps is valid ("No methodological gap found; searched: …").
+At most 2 gaps per axis; each gap starts with a `- **Gap:**` line and has all five required fields (`Alternative cause` is optional). Zero gaps is valid ("No methodological gap found; searched: …").
 
 ## candidates.md
 
@@ -113,7 +114,9 @@ At most 2 gaps per axis; each gap starts with a `- **Gap:**` line and has all fi
 - **Origin:** system | user
 - **Intuition:** …
 - **Gap it attacks:** …
-- **If improving prior candidate:** …        (optional)
+- **If improving prior candidate:** …        (optional; what was added / replaced / removed)
+- **Lever:** <objective | representation | architecture | data | inference | interface | formulation | systems> — alternatives considered: <lever>: <why not>; <lever>: <why not>
+- **Core bet:** <the one claim that must hold; what it buys on the standard metric if it does — a labelled guess>
 - **Source inspiration:** … novelty type: new-topic | recombination-of-distant-concepts | reinforcing-a-weak-connection | extension-or-deepening | fixing-a-shortcoming | reframing
 - **How it maps to this problem:** …
 - **Why it could work:** …
@@ -121,18 +124,19 @@ At most 2 gaps per axis; each gap starts with a `- **Gap:**` line and has all fi
 - **Main risk:** …
 ```
 
-For `Origin: user`, Source inspiration may be `user's own construction`, and the novelty line may read `to be assessed in the novelty survey`.
+For `Origin: user`, Source inspiration may be `user's own construction`, the novelty line may read `to be assessed in the novelty survey`, and the Lever line may read `alternatives considered: n/a — user idea`. Lever names come from `references/thinking_traps.md` §1.
 
 ## scores.md
 
 ```markdown
 ### C<n> verdict
-- **Verdict:** survive | revise(focus=<novelty|coherence|feasibility|clarity|mapping|grounding>) | reject(reason=<…; "collision: …" for a collision>)
+- **Verdict:** survive | revise(focus=<novelty|coherence|feasibility|clarity|mapping|grounding|ambition|lever>) | reject(reason=<…; "collision: …" for a collision>)
 - **Search trail:** <novelty queries run; anything left unchecked>
 - **Closest work:**
   - [id] — problem: … · method: … · contribution: …
 - **Novelty argument:** <one paragraph: what is added or advanced over the closest work, and why it matters; "n/a — collision" when rejecting for collision>
 - **Collision report:** <only for a collision: papers, where problem/method/contribution coincide, why the differences can't carry a novelty claim>
+- **Idea shape:** lever <lever> · components core <n> / support <n> / guard <n> · dominating alternative: <lever, or "none found"> · upside on standard metric: <stated | missing | marginal>
 - **Evidence:**
   - [id] — …
 - **Strongest objection:** …
@@ -171,7 +175,7 @@ A single JSON object following `assets/report_schema.json`. Every top-level fiel
 | `topic_relevance` | `sub_topic[]`, `primary_focus[]` |
 | `one_sentence_thesis` | <30 words, no numbers |
 | `core_problem` | `problem_statement`, `why_it_matters[]` (motivation only), `concrete_example` |
-| `key_novelty` | `main_idea`, `explanation[]` (intuition level) |
+| `key_novelty` | `main_idea`, `explanation[]` (intuition level), `lever` (lever + why it beats the strongest alternative) |
 | `problem_definition` | `formal_setting`, `inputs`, `outputs` |
 | `key_terms` | term → plain-language definition |
 | `related_work[]` | `sub_area`, `what_it_does`, `open_gap`, `citations[]` |
@@ -179,7 +183,7 @@ A single JSON object following `assets/report_schema.json`. Every top-level fiel
 | `model_details` | `base_model`, `training{method, objective_functions[], adaptation, key_hyperparameters{}}` |
 | `comparison_to_sota` | `related_methods[]`, `key_differences[]` |
 | `proposed_evaluation` | `evaluation_setting`, `benchmarks[]`, `baselines[]`, `main_metrics[]`, `ablations[]` |
-| `falsifiable_predictions[]` | `pillar`, `prediction`, `kill_condition` |
+| `falsifiable_predictions[]` | `kind` (`upside` / `mechanism` / `safety` / `cost`), `pillar`, `prediction`, `kill_condition` — at least one `upside`; `safety` + `cost` at most half |
 | `limitations[]` | 3–5 items |
 
 Citations are bracketed IDs inside strings; `related_work[].citations` holds bare ID strings. No measured results anywhere.

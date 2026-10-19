@@ -12,7 +12,8 @@
   },
   "key_novelty": {
     "main_idea": "Short name for the contribution.",
-    "explanation": ["2-3 bullets, at most ~35 words each, intuition/analogy level, no formal notation. Name where the borrowed mechanism comes from."]
+    "explanation": ["2-3 bullets, at most ~35 words each, intuition/analogy level, no formal notation. Name where the borrowed mechanism comes from."],
+    "lever": "The lever carrying the core bet (objective, representation, architecture, data, inference, interface, formulation or systems; see references/thinking_traps.md), then why it beats the strongest alternative lever."
   },
   "problem_definition": {
     "formal_setting": "Mathematical or formal description of the problem.",
@@ -77,6 +78,7 @@
   },
   "falsifiable_predictions": [
     {
+      "kind": "upside | mechanism | safety | cost. At least one upside prediction on the problem's standard metric; safety and cost together at most half.",
       "pillar": "Which design pillar this tests.",
       "prediction": "One empirical claim the method implies (a prediction, not a result).",
       "kill_condition": "The observation that would falsify it."

@@ -25,6 +25,9 @@ Limits by depth (from problem.md):
 
 Elapsed time is measured from .run_meta.json (written by init_run.py), else the
 "Started:" line in plan.md, else the oldest file in the run directory.
+
+It also lists each candidate's lever (references/thinking_traps.md §1) and, when the
+next step is a fresh innovator call, the levers to pass as AVOID_LEVER.
 """
 
 from __future__ import annotations
@@ -36,6 +39,9 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _levers import run_levers  # noqa: E402
 
 LIMITS = {
     "quick":    {"papers": 20, "axes": 1, "candidates": 2, "checks": 1, "wrap_min": 30,  "stop_min": 45},
@@ -111,6 +117,7 @@ def collect(run: Path) -> dict:
     survived = [c for c, v in verdicts.items() if v == "survive"]
     unreviewed = [c for c in candidates if c not in verdicts]
     checks, pending_checks = _checks(run)
+    levers = run_levers(cand_text)
     report = (run / "report.json").exists()
     rendered = (run / "report.md").exists()
     started, source = _started(run)
@@ -191,6 +198,17 @@ def collect(run: Path) -> dict:
             nxt = "continue the loop (innovator on the chosen gap, or act on the last verdict)."
 
     notes = []
+    used = []
+    for info in levers.values():
+        if info["lever"] and info["origin"] != "user" and info["lever"] not in used:
+            used.append(info["lever"])
+    fresh_levers = [i["lever"] for i in levers.values() if not i["rebuild"] and i["origin"] != "user"]
+    if len(fresh_levers) >= 2 and len(set(fresh_levers)) == 1 and fresh_levers[0]:
+        notes.append(f"every fresh candidate uses the '{fresh_levers[0]}' lever (thinking_traps.md, T3)")
+    fresh_next = (verdict == "CONTINUE" and not user_mode and not survived and not unreviewed and not report
+                  and latest_verdict == "reject")
+    if used and fresh_next:
+        notes.append("next innovator call is a fresh intuition — pass AVOID_LEVER: " + ", ".join(used))
     if verdict == "STOP":
         notes.append("no more sanity checks (STOP)")
     elif len(checks) >= lim["checks"]:
@@ -204,6 +222,7 @@ def collect(run: Path) -> dict:
         "depth": depth, "limits": lim, "elapsed_min": round(elapsed, 1), "started_from": source,
         "papers": papers, "axes": axes, "candidates": candidates, "verdicts": verdicts,
         "checks": checks, "pending_checks": pending_checks,
+        "levers": {c: i["lever"] for c, i in levers.items()}, "levers_used": used,
         "report_json": report, "report_md": rendered,
         "verdict": verdict, "reasons": reasons_stop + reasons_wrap, "notes": notes, "next": nxt,
     }
@@ -224,11 +243,13 @@ def main() -> int:
         return 0
     lim = s["limits"]
     vs = ", ".join(f"{c}:{v}" for c, v in s["verdicts"].items()) or "none"
+    lv = ", ".join(f"{c}:{v or '?'}" for c, v in s["levers"].items()) or "none"
     print(f"mode {s['mode']} · depth {s['depth']} · elapsed {s['elapsed_min']:.0f}/{lim['wrap_min']}/{lim['stop_min']} min "
           f"(wrap/stop; start from {s['started_from']})")
     print(f"papers {s['papers']}/{lim['papers']} · axes {s['axes']}/{lim['axes']} · "
           f"candidates {len(s['candidates'])}/{lim['candidates']} · checks {len(s['checks'])}/{lim['checks']} · "
           f"verdicts {vs} · report.json {'yes' if s['report_json'] else 'no'}")
+    print(f"levers {lv}")
     if s["reasons"]:
         print("why: " + "; ".join(s["reasons"]))
     for n in s["notes"]:

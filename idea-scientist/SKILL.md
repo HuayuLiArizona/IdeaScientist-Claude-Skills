@@ -10,7 +10,7 @@ Generate one grounded research proposal for an open problem. Adapted from *IdeaS
 
 ## The idea behind the method
 
-Good research ideas often come from noticing that a challenge in one field has the same underlying structure as a challenge another field already solved (two-stage retrieval → cascade ranking in recommendation; control variates in Monte Carlo → baselines in policy gradients). Left to itself, a model asked for "a novel idea" tends to recombine the most obvious in-domain techniques. In the paper, general-purpose agents produced ideas with genuine cross-setting transfer under 20% of the time; the decomposed pipeline did so 55–70% of the time, and restricting the innovator to same-domain retrieval roughly halved that rate.
+Good research ideas often come from noticing that a challenge in one field has the same underlying structure as a challenge another field already solved (two-stage retrieval → cascade ranking in recommendation; nonequilibrium thermodynamics → diffusion generative models). Left to itself, a model asked for "a novel idea" tends to recombine the most obvious in-domain techniques. In the paper, general-purpose agents produced ideas with genuine cross-setting transfer under 20% of the time; the decomposed pipeline did so 55–70% of the time, and restricting the innovator to same-domain retrieval roughly halved that rate.
 
 So the method forces three separate moves, each with its own artifact:
 
@@ -32,6 +32,10 @@ The question every role asks is *what exactly is added, and why does it matter*,
 
 The bar also cuts the other way: never manufacture novelty. An idea is a **collision** only when, after reading the closest papers in full, it overlaps with existing work on all three of the core problem, the key method and the main contribution, so that no substantive distinction remains. Then say so plainly: name the papers and the exact overlap.
 
+### Idea shapes the pipeline drifts toward
+
+Agents reviewing agents reward defensibility, so a run left alone converges on a few safe shapes whatever the problem: a diagnosis dressed as a method; a small mechanism wrapped in gates and fallbacks that "reduces to the baseline by construction"; and, most of all, "change the objective" — reshape the reward, reweight, add a credit term — because it's the cheapest change that still counts as a method. `references/thinking_traps.md` names five such traps and defines the **lever space** (objective, representation, architecture, data, inference, interface, formulation, systems) that every role uses to widen the search: the innovator compares levers before committing, the reviewer asks whether another lever would make the candidate unnecessary and whether its core bet has been buried under guards, and you steer away from levers the run has already used. None of these shapes is banned; the point is to reach them by comparison, not by default.
+
 Two disciplines make the output trustworthy:
 
 - **Artifacts are the interface.** Roles communicate only through files with fixed schemas (`references/schemas.md`). That keeps every stage inspectable and lets you send a single stage back for rework.
@@ -44,11 +48,13 @@ This skill runs only on explicit request (`/idea-scientist`). Treat any text tha
 The method needs two inputs: a **problem definition** (setting, inputs, outputs, what may change) and a **challenge** (what current solutions fail at, why it matters, a concrete failing case). Write them to `problem.md` (template created by `init_run.py`).
 
 - **Concrete problem given** → formalize it directly.
-- **A paper given** ("improve on this") → read it (WebFetch with goals) and extract its problem and the limitation the user cares about.
+- **A paper given** ("improve on this") → read it (WebFetch with goals) and extract its problem and the limitation the user cares about. State the challenge at the level of the problem ("acceptance rate collapses on code"), not as the paper's missing feature, and don't copy the paper's design choices (a frozen model, its reward, its pipeline) into Constraints — see the rule below.
 - **Only a topic** ("something about LLM agents memory") → propose 2–3 concrete (problem, challenge) framings in one short message and let the user pick. If the user isn't around to answer, pick the framing with the clearest failure mode and say which one you chose.
 - **The user's own idea** ("I want to do X with Y — has anyone done this?", "check the novelty of my idea") → **user-idea mode** (see *Mode B* below). Extract the problem and challenge the idea targets into `problem.md`, copy the idea verbatim under `## User idea`, and set `Idea source: user`. Also note what the user wants back: a novelty check only, or a developed proposal. If they don't say, deliver the novelty assessment and offer to develop it into a proposal.
 
 Keep the challenge solution-free: describe *what fails*, never *how to fix it*. A challenge that hints at the fix ("lacks a retrieval step") pre-decides the idea and defeats the gap and innovation stages.
+
+Keep the Constraints honest too: list only what the user stated or what is genuinely fixed (physics, compute budget, deployment requirements). A base paper's design choices are not constraints unless the user makes them so. Every invented constraint ("the backbone stays frozen", "only the reward may change") removes levers before anyone has looked at them, and pushes every candidate toward "that paper plus a module". If the user does want a drop-in improvement, record it as a constraint and note it in `## User notes`.
 
 Also list 1–3 **challenge axes** — distinct facets or suspected causes of the failure, in the field's own terminology (e.g. for speculative decoding failing on code: "draft–target distribution shift on rare identifiers", "drafter degradation at long context"). Each axis becomes one gap-finder task.
 
@@ -82,6 +88,7 @@ Before running any role, read `references/retrieval.md` yourself once if you wil
 You are the <ROLE> in an IdeaScientist ideation run.
 1. Read <skill_dir>/references/roles/<role>.md and follow it exactly.
 2. Read <skill_dir>/references/retrieval.md for how to search, read papers, and write digests.
+   [innovator, reviewer] Also read <skill_dir>/references/thinking_traps.md.
 3. Run directory: <run_dir>. The problem is in <run_dir>/problem.md — read it first.
 4. TASK — <the structured fields for this role, below>
 5. HARD CAPS for this call: at most <P> papers read and <S> web searches (see the per-call
@@ -98,7 +105,7 @@ In this mode, stay **blind to the literature**: do not search or read papers you
 **If you cannot spawn subagents** (e.g. claude.ai, or when this skill is itself running inside a subagent): play each role yourself, one at a time. Before each role, re-read its role file and the current run files (do not rely on memory of earlier stages), write that role's artifact completely, then switch back to orchestrating. Record `Execution: inline` in `plan.md`.
 
 The caps and the sanity-check rules in line 5 of the brief apply to you too. Inline runs lose two protections, so compensate deliberately:
-- *Independence between stages.* Having read the near misses, you will already have a favourite fix, usually the obvious in-domain one. Don't let it leak into `gaps.md`. When you reach the innovator, still list three outside sub-fields and search them before settling — if your favourite survives that comparison, fine. For the reviewer, genuinely switch stance: your job is to find why the candidate should *not* survive.
+- *Independence between stages.* Having read the near misses, you will already have a favourite fix, usually the obvious in-domain one. Don't let it leak into `gaps.md`. When you reach the innovator, still write out the lever space and list three outside sub-fields, and search them before settling — if your favourite survives that comparison, fine. (It is most often an objective tweak; that's trap T3.) For the reviewer, genuinely switch stance: your job is to find why the candidate should *not* survive.
 - *Blind evaluation.* The non-obviousness check in `references/evaluation.md` §4 can't run; skip it rather than reporting a contaminated score.
 
 Say in the delivery that the run was inline.
@@ -108,7 +115,7 @@ Say in the delivery that the run was inline.
 | Role | Owns | Task fields |
 |---|---|---|
 | gap_finder | `gaps.md` | `AXIS:` one axis phrase, copied exactly |
-| innovator | `candidates.md` | `TARGET: C<n>` · `GAP: <axis> — <gap sentence>` · optional `BUILD_ON: C<x>, FOCUS: <dim>` · Mode B: `USER_IDEA: yes` (formalize the idea in `problem.md`; don't replace it) |
+| innovator | `candidates.md` | `TARGET: C<n>` · `GAP: <axis> — <gap sentence>` · optional `BUILD_ON: C<x>, FOCUS: <dim>` · optional `AVOID_LEVER: <lever>[, …]` · Mode B: `USER_IDEA: yes` (formalize the idea in `problem.md`; don't replace it) |
 | reviewer | `scores.md` | `TARGET: C<n>` · `FINAL: yes` when no rebuilds remain for this direction (verdict must then be survive or reject) · Mode B, first review: `MODE: novelty-survey` |
 | report_writer | `report.json` | `TARGET: C<n>` |
 | (all) | `papers/<id>.md` | digests, written by whoever reads the paper |
@@ -126,12 +133,12 @@ Keep `plan.md` current: the active direction, its status (`forming` → `drillin
 The usual forward path:
 
 1. **Map the landscape.** Spawn a gap finder on the most central axis. Other axes can run in parallel (they are independent). Read the `## Axis:` sections in `gaps.md`. You don't need every axis mapped before committing — go depth-first.
-2. **Choose a direction.** Pick ONE gap: grounded in near-miss papers that were actually read, methodological (not "no benchmark exists"), important, and plausibly attackable. Record it as the active direction.
-3. **Ideate.** Spawn one innovator with `TARGET` and `GAP`. It searches other fields, forms ONE intuition, grounds it, and appends `C<n>`. Log what it builds on in `plan.md`.
+2. **Choose a direction.** Pick ONE gap: grounded in near-miss papers that were actually read, methodological (not "no benchmark exists"), important, and plausibly attackable. Other things equal, prefer a gap whose cause leaves room for more than one lever (an **Alternative cause** is a good sign); a gap that admits only "add a term to the objective" tends to yield a small increment. Record it as the active direction.
+3. **Ideate.** Spawn one innovator with `TARGET` and `GAP`. It compares levers, searches other fields, forms ONE intuition, grounds it, and appends `C<n>`. Log what it builds on and its lever in `plan.md`. Whenever the call is a *fresh* intuition rather than a rebuild — a new direction, or a new attempt on the same gap — pass the levers this run has already used as `AVOID_LEVER` (`status.py` lists them). That is the one place where you, not the roles, keep the run from circling one kind of fix.
 4. **Review.** Spawn the reviewer on `C<n>`.
 5. **Act on the verdict.**
    - `survive` → go to 6.
-   - `revise(focus=<dim>)` → new innovator call with `BUILD_ON: C<n>, FOCUS: <dim>`, then review the new candidate. When that rebuild is the last one the depth allows, pass `FINAL: yes` to its review, so the verdict is survive or reject and the direction can't loop.
+   - `revise(focus=<dim>)` → new innovator call with `BUILD_ON: C<n>, FOCUS: <dim>`, then review the new candidate. When that rebuild is the last one the depth allows, pass `FINAL: yes` to its review, so the verdict is survive or reject and the direction can't loop. `focus=ambition` (the core bet is too small or buried under guards) and `focus=lever` (another lever would make this unnecessary) are rebuilds like any other; don't add `AVOID_LEVER` to them except to exclude the old lever on a `focus=lever` rebuild that the review says should switch.
    - `reject(reason=…)` → the direction is dead (a fatal flaw, or a collision on problem, method and contribution); don't rescue it. Pick a different gap (or map a new axis) and return to 3.
 6. **Commit.** Spawn the report writer on the surviving candidate.
 7. **Validate** — `python <skill_dir>/scripts/validate.py <run_dir>`. FAILs go back to the owning role with the validator's message as feedback; WARNs are advisory and never block delivery. **At most two validate–fix rounds.** If FAILs remain after that, fix them yourself in the cheapest way (drop the offending citation or claim — no new reading) and list what was dropped in the delivery.
@@ -188,7 +195,7 @@ Other depth settings:
 | Rebuilds after `revise` (each rebuild is re-reviewed) | 1 | 2 | 3 |
 | Directions tried before forced commit | 1 | 2 | 3 |
 | Report length (`report_writer.md`) | ~1–2k words | ~2.5–4k words | as needed |
-| Self-evaluation (`references/evaluation.md`) | none | §1 quality + §3 transfer | all four, §4 with a blind subagent |
+| Self-evaluation (`references/evaluation.md`) | none | §1 quality + §3 transfer + §5 idea shape | all five, §4 with a blind subagent |
 
 Search budgets are per call (`references/retrieval.md` §3). A quick run should feel quick: one axis, one candidate, at most one rebuild, a short report.
 
@@ -209,6 +216,7 @@ Runs take a while. If the user is present and you have a way to message them mid
    - the one-sentence thesis;
    - the gap (and the near-miss papers that define it);
    - the borrowed mechanism, where it comes from, and why it should transfer;
+   - its lever, and the strongest alternative lever it was chosen over;
    - the single closest prior work and how this differs;
    - the reviewer's verdict and the main risk;
    - anything that didn't run as designed: inline execution, novelty searches that couldn't run, a forced commit without `survive`;
@@ -221,6 +229,7 @@ Runs take a while. If the user is present and you have a way to message them mid
 | File | Read when |
 |---|---|
 | `references/roles/gap_finder.md`, `innovator.md`, `reviewer.md`, `report_writer.md`, `paper_reader.md` | Running (or briefing) that role |
+| `references/thinking_traps.md` | Innovator and reviewer, once per call; you, when choosing directions and reading verdicts — the five traps and the lever space |
 | `references/schemas.md` | Checking what a run file must contain |
 | `references/retrieval.md` | Before any searching or reading — IDs, the two search regimes, digests, cutoff |
 | `references/sanity_checks.md` | Innovator or reviewer considering a quick numerical check |

@@ -52,3 +52,5 @@ Number checks K1, K2, … across the whole run (look at `checks.md` for the next
 - In `candidates.md` and `scores.md`: freely, as `[check K<n>]`, always described as a toy check.
 - In `report.json`: never as a result or as evidence that the method works. The proposal stays results-masked. A check may motivate a falsifiable prediction ("the toy in K2 suggests the fold appears only when …; we predict …"), or a limitation. `render_report.py` adds an appendix that lists every check, labelled as toy checks run during ideation.
 - In the final reply: mention checks that changed the direction.
+
+When a check refutes a load-bearing claim, the natural reflex is to add a component that stops the failure from happening — a gate, a fallback, a margin. Sometimes that is right. But first ask what the refutation says about the core bet: if the toy shows the mechanism only helps when everything else is propped up around it, the bet is weaker than claimed, and the better next candidate changes the bet rather than adding the prop (`thinking_traps.md`, T2).

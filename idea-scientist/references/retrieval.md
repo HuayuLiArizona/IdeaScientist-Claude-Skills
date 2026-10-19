@@ -45,8 +45,8 @@ There is one search tool; what changes is how you phrase queries.
 - Thin coverage is how fake gaps happen: if the pool looks thin, rephrase.
 
 **Cross-domain regime** (innovator; report writer when grounding the borrowed mechanism). Goal: find a mechanism that beat an *analogous* challenge somewhere else.
-- First abstract the challenge away from its field: "need to cut per-item cost without losing the best items" rather than "LLM reranking is slow". The abstract form is what you search with.
-- Span at least 3 distinct sub-fields that the in-domain papers do not touch (for a credit-assignment problem in code RL: process supervision in math reasoning, tree-search backups in game play, options in hierarchical RL, control variates in Monte Carlo estimation).
+- First abstract the challenge away from its field: "need to cut per-item cost without losing the best items" rather than "LLM reranking is slow". The abstract form is what you search with — but stop while it is still specific; "the signal doesn't reach the decision" fits everything and retrieves the same few mechanism families every time (`thinking_traps.md`, T5).
+- Span at least 3 distinct sub-fields that the in-domain papers do not touch, and let them pull different levers. For "cut per-item cost without losing the best items": cascades of cheap-then-expensive classifiers in vision (`systems`), multi-fidelity surrogate modeling in engineering design (`representation`), early stopping of sequential tests in clinical trials (`inference`), and active sampling in survey statistics (`data`).
 - An in-domain source is acceptable only if the transfer is non-trivial — not a rediscovery of the closest prior work.
 
 ## 3. Searching
