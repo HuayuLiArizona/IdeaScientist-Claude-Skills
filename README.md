@@ -62,6 +62,18 @@ The skill does not chase absolute originality, and it won't drop a direction jus
 
 It also refuses to manufacture novelty. An idea counts as a **collision** only when it overlaps with existing work on the core problem, the key method *and* the main contribution, judged after reading those papers in full. Then the reviewer names the papers and the exact overlap instead of arguing around it.
 
+### Avoiding the usual idea shapes
+
+Agents reviewing agents reward defensibility, so a pipeline like this drifts toward a few safe idea shapes whatever the problem: an analysis paper dressed as a method; a small mechanism wrapped in gates and fallbacks that "reduces to the baseline by construction"; and, above all, "change the objective" (reshape the reward, reweight, add a credit term), because it is the cheapest change that still counts as a method. [`references/thinking_traps.md`](idea-scientist/references/thinking_traps.md) names five such traps and a **lever space** — objective, representation, architecture, data, inference, interface, formulation, systems — that the roles use to widen the search:
+
+- the **innovator** abstracts the challenge from two angles, compares at least three levers before committing, and states the idea's **core bet** and what it would buy on the problem's standard metric;
+- on a rebuild, it replaces before it adds, and adds at most one component;
+- the **reviewer** asks whether a different lever would make the candidate unnecessary (`revise(focus=lever)`) and whether its core has been buried under guards (`revise(focus=ambition)`);
+- the **orchestrator** passes the levers already used as `AVOID_LEVER` to every fresh innovator call, and doesn't copy a base paper's design choices into the problem's constraints;
+- the **report** names its lever and labels each prediction `upside`, `mechanism`, `safety` or `cost`; at least one must be an upside prediction on the standard metric.
+
+None of these shapes is banned. The point is to reach them by comparison rather than by default.
+
 ## Installation
 
 The skill needs **web search and web fetch** (to find and read papers) and **code execution** (for its helper scripts). The scripts use only the Python 3.9+ standard library, so there is nothing to `pip install`.
@@ -210,7 +222,7 @@ The skill calls these itself; you can also run them by hand. From the repository
 ```bash
 S=idea-scientist/scripts
 python $S/init_run.py ideation-foo --depth quick --cutoff 2025-06-01 --language zh
-python $S/status.py ideation-foo              # budget check: CONTINUE / WRAP UP / STOP
+python $S/status.py ideation-foo              # budget check: CONTINUE / WRAP UP / STOP, plus levers used
 python $S/lit_search.py check
 python $S/lit_search.py search --backend arxiv "cascade ranking latency" --k 20 --before 2025-06-01
 python $S/lit_search.py path "doi:10.1101/2023.06.01.543210"   # digest path for an ID
@@ -222,6 +234,7 @@ python $S/render_report.py ideation-foo       # report.json → report.md
 
 - **Schema:** every run file and every proposal field is present and filled.
 - **Gaps:** at most 2 per axis, each with all five fields.
+- **Idea shape:** candidates name a lever and the alternatives it beat; the report has an `upside` prediction (WARN when safety and cost predictions are more than half, when every fresh candidate uses the same lever, or when the thesis reads like an analysis paper).
 - **Read before cite:** every cited ID resolves to a digest.
 - **No fake results:** no placeholders and no "achieves X%" phrasing.
 - **Cutoff:** in cutoff runs, both the paper's date and the date of the version actually read must fall before the cutoff.
@@ -237,10 +250,11 @@ idea-scientist/                 ← the skill (install this folder)
     retrieval.md                paper IDs, search regimes, search budget, digests, cutoff rules
     schemas.md                  format of every run file
     sanity_checks.md            rules for quick numerical toy checks
+    thinking_traps.md           the five idea-shape traps and the lever space
     evaluation.md               self-evaluation rubrics
     roles/                      gap_finder · innovator · reviewer · report_writer · paper_reader
   scripts/
-    init_run.py · status.py · lit_search.py · validate.py · render_report.py · _ids.py
+    init_run.py · status.py · lit_search.py · validate.py · render_report.py · _ids.py · _levers.py
   assets/
     report_schema.json          proposal skeleton
 ```
@@ -280,6 +294,7 @@ Caveats:
 | Offline Svalbard Idea Vault (4.7M papers, BM25 + embeddings) | Live web search by default; APIs or a local vault optional |
 | Gap finder, innovator and report writer trained with per-role GRPO LoRA adapters | No training: the same role contracts, followed through prompting |
 | Integer vault IDs | Prefixed IDs: `arXiv:`, `doi:`, `acl:`, `openreview:`, `pmid:`, `ref:` |
+| — | Idea-shape safeguards: a lever space, core-bet and guard audits, `AVOID_LEVER` steering, prediction kinds (`references/thinking_traps.md`) |
 
 ## Limitations
 

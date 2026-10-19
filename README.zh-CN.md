@@ -59,6 +59,18 @@ flowchart LR
 
 反过来，它也不会为了保留 idea 而强行制造 novelty。只有在完整读过最接近的论文之后，发现在核心问题、关键方法和主要贡献这三方面**同时**高度重合、已无法形成实质区分时，才判定为"撞车"。这时评审会明确指出与哪些工作撞车、具体重合在哪里。
 
+### 避开常见的 idea 套路
+
+由 agent 评审 agent，奖励的是"好辩护"，所以这类流程不管面对什么问题，都会漂向几种安全的 idea 形态：披着方法外衣的分析型论文；一个小机制外面包满门控和回退、"按构造退化为基线"；以及最常见的"改目标函数"（改奖励、重新加权、加一个信用项），因为这是还能算作"方法"的最便宜的改动。[`references/thinking_traps.md`](idea-scientist/references/thinking_traps.md) 列出了五种这样的陷阱，并定义了一个**杠杆空间**：objective（目标）、representation（表示）、architecture（结构）、data（数据）、inference（推理过程）、interface（接口）、formulation（问题形式）、systems（系统）。各角色用它来拓宽搜索：
+
+- **Innovator** 从两个角度抽象挑战，定稿前至少比较三种杠杆，并写明 idea 的**核心赌注**以及它在问题标准指标上能带来多少；
+- 改版时先替换、后添加，每次最多新增一个组件；
+- **Reviewer** 会问：换一种杠杆是否会让这个方法变得不必要（`revise(focus=lever)`）？核心是否被护栏淹没了（`revise(focus=ambition)`）？
+- **Orchestrator** 每次发起全新的 innovator 调用时，把本轮已经用过的杠杆作为 `AVOID_LEVER` 传进去；也不会把基础论文的设计选择当成问题约束；
+- **提案**写明所用杠杆，并给每条预测标注 `upside`、`mechanism`、`safety` 或 `cost`，其中至少一条必须是标准指标上的 upside 预测。
+
+这些形态都没有被禁止，关键是要经过比较才选到它们，而不是默认就走向它们。
+
 ## 安装
 
 这个 skill 需要**网页搜索和网页抓取**（找论文、读论文）以及**代码执行**（运行辅助脚本）。脚本只用 Python 3.9+ 标准库，不需要 `pip install` 任何东西。
@@ -206,7 +218,7 @@ skill 会自动调用这些脚本，你也可以在仓库根目录手动运行�
 ```bash
 S=idea-scientist/scripts
 python $S/init_run.py ideation-foo --depth quick --cutoff 2025-06-01 --language zh
-python $S/status.py ideation-foo              # 预算检查：CONTINUE / WRAP UP / STOP
+python $S/status.py ideation-foo              # 预算检查：CONTINUE / WRAP UP / STOP，并列出已用杠杆
 python $S/lit_search.py check
 python $S/lit_search.py search --backend arxiv "cascade ranking latency" --k 20 --before 2025-06-01
 python $S/lit_search.py path "doi:10.1101/2023.06.01.543210"   # 某个 ID 对应的摘要路径
@@ -218,6 +230,7 @@ python $S/render_report.py ideation-foo       # report.json → report.md
 
 - **格式：** 所有运行文件和提案字段都存在且有内容。
 - **Gap：** 每个 axis 最多 2 个，每个都有 5 个必填字段。
+- **Idea 形态：** 候选要写明杠杆及比较过的替代杠杆；提案要有 `upside` 预测（safety 和 cost 类预测超过一半、所有全新候选都用同一种杠杆、或论点读起来像分析型论文时，给出 WARN）。
 - **先读后引：** 每个被引用的 ID 都有对应摘要。
 - **不编结果：** 没有占位符，也没有"达到 X%"这类写法。
 - **截止日期：** 回溯模式下，论文日期和实际所读版本的日期都必须早于截止日。
@@ -233,10 +246,11 @@ idea-scientist/                 ← skill 本体（安装这个文件夹）
     retrieval.md                论文 ID、两种检索方式、检索预算、摘要格式、截止规则
     schemas.md                  各运行文件的格式
     sanity_checks.md            快速数值玩具验证的规则
+    thinking_traps.md           五种 idea 形态陷阱与杠杆空间
     evaluation.md               自评标准
     roles/                      gap_finder · innovator · reviewer · report_writer · paper_reader
   scripts/
-    init_run.py · status.py · lit_search.py · validate.py · render_report.py · _ids.py
+    init_run.py · status.py · lit_search.py · validate.py · render_report.py · _ids.py · _levers.py
   assets/
     report_schema.json          提案模板
 ```
@@ -276,6 +290,7 @@ skill 唯一的失败，是回溯测试里读到了截止日之后的论文版�
 | 离线的 Svalbard Idea Vault（470 万篇论文，BM25 + 向量检索） | 默认实时网页检索；也可选用 API 或本地 vault |
 | Gap finder、innovator、report writer 用逐角色 GRPO 训练 LoRA adapter | 不训练：保留同样的角色约定，靠提示词执行 |
 | vault 内部的整数 ID | 带前缀的 ID：`arXiv:`、`doi:`、`acl:`、`openreview:`、`pmid:`、`ref:` |
+| — | Idea 形态防护：杠杆空间、核心赌注与护栏审查、`AVOID_LEVER` 引导、预测类型（`references/thinking_traps.md`） |
 
 ## 局限
 
